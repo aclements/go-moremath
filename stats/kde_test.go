@@ -48,26 +48,18 @@ func TestOneSample(t *testing.T) {
 
 func TestTwoSamples(t *testing.T) {
 	kde := KDE{Bandwidth: FixedBandwidth(2)}.FromSample(Sample{Xs: []float64{1, 3}})
-	for x, e := range map[float64]float64{
+	testFunc(t, "PDF", kde.At, map[float64]float64{
 		0: 0.120395730,
 		1: 0.160228251,
 		2: 0.176032663,
 		3: 0.160228251,
-		4: 0.120395730} {
-		if g := kde.At(x); !aeq(e, g) {
-			t.Errorf("bad PDF value at %g: expected %g, got %g", x, e, g)
-		}
-	}
+		4: 0.120395730})
 
 	kdei := kde.Integrate()
-	for x, e := range map[float64]float64{
+	testFunc(t, "CDF", kdei.At, map[float64]float64{
 		0: 0.187672369,
 		1: 0.329327626,
 		2: 0.5,
 		3: 0.670672373,
-		4: 0.812327630} {
-		if g := kdei.At(x); !aeq(e, g) {
-			t.Errorf("bad CDF value at %g: expected %g, got %g", x, e, g)
-		}
-	}
+		4: 0.812327630})
 }
