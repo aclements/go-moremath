@@ -148,22 +148,38 @@ func (s Sample) Mean() float64 {
 	return m
 }
 
-// StdDev returns the sample standard deviation of xs.
-func StdDev(xs []float64) float64 {
+// Variance returns the sample variance of xs.
+func Variance(xs []float64) float64 {
 	if len(xs) == 0 {
 		return math.NaN()
+	} else if len(xs) <= 1 {
+		return 0
 	}
 
-	// Based on Wikipedia's presentation of Welford 1962.  This is
-	// more numerically stable than the standard two-pass formula.
-	A, Q, k := 0.0, 0.0, 0
-	for _, x := range xs {
-		Anext := A + (x-A)/float64(k)
-		Q += (x - A) * (x - Anext)
-		A = Anext
-		k++
+	// Based on Wikipedia's presentation of Welford 1962
+	// (http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm).
+	// This is more numerically stable than the standard two-pass
+	// formula and not prone to massive cancellation.
+	mean, M2 := 0.0, 0.0
+	for n, x := range xs {
+		delta := x - mean
+		mean += delta / float64(n+1)
+		M2 += delta * (x - mean)
 	}
-	return math.Sqrt(Q / float64(k-1))
+	return M2 / float64(len(xs)-1)
+}
+
+func (s Sample) Variance() float64 {
+	if len(s.Xs) == 0 || s.Weights == nil {
+		return Variance(s.Xs)
+	}
+	// TODO(austin)
+	panic("Weighted Variance not implemented")
+}
+
+// StdDev returns the sample standard deviation of xs.
+func StdDev(xs []float64) float64 {
+	return math.Sqrt(Variance(xs))
 }
 
 // StdDev returns the sample standard deviation of the Sample.
