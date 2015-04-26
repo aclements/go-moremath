@@ -4,8 +4,9 @@
 
 package stats
 
-import "math"
-
 func aeq(expect, got float64) bool {
-	return math.Abs(expect-got) < 0.00001
+	if expect < 0 && got < 0 {
+		expect, got = -expect, -got
+	}
+	return expect*0.99999999 <= got && got*0.99999999 <= expect
 }
