@@ -30,4 +30,9 @@ func TestTTest(t *testing.T) {
 
 	r, _ = PairedTTest(s1.Xs, s2.Xs, 0)
 	check(&TTestResult{17, 0.00044334353831207749, 3}, r)
+
+	r, _ = OneSampleTTest(s1, 0)
+	check(&TTestResult{3.872983346207417, 0.030466291662170977, 3}, r)
+	r, _ = OneSampleTTest(s1, 2.5)
+	check(&TTestResult{0, 1, 3}, r)
 }
