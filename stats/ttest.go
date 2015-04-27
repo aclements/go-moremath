@@ -37,6 +37,7 @@ type TTestSample interface {
 }
 
 var (
+	ErrSampleSize        = errors.New("sample is too small")
 	ErrZeroVariance      = errors.New("sample has zero variance")
 	ErrMismatchedSamples = errors.New("samples have different lengths")
 )
@@ -48,8 +49,11 @@ var (
 // variance, and that the populations are normally distributed.
 func TwoSampleTTest(x1, x2 TTestSample) (*TTestResult, error) {
 	n1, n2 := x1.Weight(), x2.Weight()
+	if n1 == 0 || n2 == 0 {
+		return nil, ErrSampleSize
+	}
 	v1, v2 := x1.Variance(), x2.Variance()
-	if v1 == 0 || v2 == 0 {
+	if v1 == 0 && v2 == 0 {
 		return nil, ErrZeroVariance
 	}
 
@@ -64,8 +68,12 @@ func TwoSampleTTest(x1, x2 TTestSample) (*TTestResult, error) {
 // assume the distributions have equal variance.
 func TwoSampleWelchTTest(x1, x2 TTestSample) (*TTestResult, error) {
 	n1, n2 := x1.Weight(), x2.Weight()
+	if n1 <= 1 || n2 <= 1 {
+		// TODO: Can we still do this with n == 1?
+		return nil, ErrSampleSize
+	}
 	v1, v2 := x1.Variance(), x2.Variance()
-	if v1 == 0 || v2 == 0 {
+	if v1 == 0 && v2 == 0 {
 		return nil, ErrZeroVariance
 	}
 
@@ -84,6 +92,10 @@ func PairedTTest(x1, x2 []float64, μ0 float64) (*TTestResult, error) {
 	if len(x1) != len(x2) {
 		return nil, ErrMismatchedSamples
 	}
+	if len(x1) <= 1 {
+		// TODO: Can we still do this with n == 1?
+		return nil, ErrSampleSize
+	}
 
 	dof := float64(len(x1) - 1)
 
@@ -93,6 +105,7 @@ func PairedTTest(x1, x2 []float64, μ0 float64) (*TTestResult, error) {
 	}
 	sd := StdDev(diff)
 	if sd == 0 {
+		// TODO: Can we still do the test?
 		return nil, ErrZeroVariance
 	}
 	t := (Mean(diff) - μ0) * math.Sqrt(float64(len(x1))) / sd
@@ -105,7 +118,11 @@ func PairedTTest(x1, x2 []float64, μ0 float64) (*TTestResult, error) {
 // normal.
 func OneSampleTTest(x TTestSample, μ0 float64) (*TTestResult, error) {
 	n, v := x.Weight(), x.Variance()
+	if n == 0 {
+		return nil, ErrSampleSize
+	}
 	if v == 0 {
+		// TODO: Can we still do the test?
 		return nil, ErrZeroVariance
 	}
 	dof := n - 1
