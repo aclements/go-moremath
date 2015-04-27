@@ -191,10 +191,14 @@ func (s Sample) StdDev() float64 {
 	panic("Weighted StdDev not implemented")
 }
 
-// Percentile returns the pctileth value from the Sample.
+// Percentile returns the pctileth value from the Sample. This uses
+// interpolation method R8 from Hyndman and Fan (1996).
 //
-// pctile will be capped to the range [0, 1].  If len(xs) == 0 or all
+// pctile will be capped to the range [0, 1]. If len(xs) == 0 or all
 // weights are 0, returns NaN.
+//
+// Percentile(0.5) is the median. Percentile(0.25) and
+// Percentile(0.75) are the first and third quartiles, respectively.
 //
 // This is constant time if s.Sorted and s.Weights == nil.
 func (s Sample) Percentile(pctile float64) float64 {
@@ -214,8 +218,20 @@ func (s Sample) Percentile(pctile float64) float64 {
 	}
 
 	if s.Weights == nil {
-		return s.Xs[int(pctile*float64(len(s.Xs)-1))]
+		N := float64(len(s.Xs))
+		//n := pctile * (N + 1) // R6
+		n := 1/3.0 + pctile*(N+1/3.0) // R8
+		kf, frac := math.Modf(n)
+		k := int(kf)
+		if k <= 0 {
+			return s.Xs[0]
+		} else if k >= len(s.Xs) {
+			return s.Xs[len(s.Xs)-1]
+		}
+		return s.Xs[k-1] + frac*(s.Xs[k]-s.Xs[k-1])
 	} else {
+		// TODO(austin): Implement interpolation
+
 		target := s.Weight() * pctile
 
 		// TODO(austin) If we had cumulative weights, we could
