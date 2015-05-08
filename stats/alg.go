@@ -6,7 +6,10 @@ package stats
 
 // Miscellaneous helper algorithms
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 // sign returns the sign of x: -1 if x < 0, 0 if x == 0, 1 if x > 0.
 func sign(x float64) int {
@@ -17,6 +20,19 @@ func sign(x float64) int {
 	} else {
 		return 1
 	}
+}
+
+// lchoose returns math.Log(choose(n, k)).
+func lchoose(n, k int) float64 {
+	a, _ := math.Lgamma(float64(n + 1))
+	b, _ := math.Lgamma(float64(k + 1))
+	c, _ := math.Lgamma(float64(n - k + 1))
+	return a - b - c
+}
+
+// choose returns the binomial coefficient of n and k.
+func choose(n, k int) int {
+	return int(math.Exp(lchoose(n, k)) + 0.5)
 }
 
 // atEach returns f(x) for each x in xs.
