@@ -19,6 +19,16 @@ func sign(x float64) int {
 	}
 }
 
+// atEach returns f(x) for each x in xs.
+func atEach(f func(float64) float64, xs []float64) []float64 {
+	// TODO(austin) Parallelize
+	res := make([]float64, len(xs))
+	for i, x := range xs {
+		res[i] = f(x)
+	}
+	return res
+}
+
 // bisect returns an x in [low, high] such that |f(x)| <= tolerance
 // using the bisection method.
 //

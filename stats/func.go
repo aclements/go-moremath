@@ -4,6 +4,9 @@
 
 package stats
 
+// TODO: Remove this and change Plot interface to use regular
+// float64->float64 functions.
+
 // Func represents a continuous function.
 type Func interface {
 	// At returns the value of this Func at x.
@@ -25,14 +28,4 @@ type Func interface {
 	//
 	// If Integrate is not implemented, it should return nil.
 	Integrate() Func
-}
-
-// atEach is a generic implementation of Func.AtEach.
-func atEach(f Func, xs []float64) []float64 {
-	// TODO(austin) Parallelize
-	res := make([]float64, len(xs))
-	for i, x := range xs {
-		res[i] = f.At(x)
-	}
-	return res
 }

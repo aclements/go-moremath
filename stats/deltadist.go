@@ -4,23 +4,24 @@
 
 package stats
 
-import "math"
-
-// Delta is the Dirac delta function, centered at T.
+// Delta is the Dirac delta function, centered at T, with total area
+// 1.
+//
+// The CDF of the Dirac delta function is the Heaviside step function,
+// centered at T. Specifically, f(T) == 1.
 type Delta struct {
 	T float64
 }
 
-func (d Delta) At(x float64) float64 {
+func (d Delta) PDF(x float64) float64 {
 	if x == d.T {
-		return math.Inf(1)
+		return inf
 	}
 	return 0
 }
 
-func (d Delta) AtEach(xs []float64) []float64 {
+func (d Delta) PDFEach(xs []float64) []float64 {
 	res := make([]float64, len(xs))
-	inf := math.Inf(1)
 	for i, x := range xs {
 		if x == d.T {
 			res[i] = inf
@@ -29,42 +30,36 @@ func (d Delta) AtEach(xs []float64) []float64 {
 	return res
 }
 
-func (d Delta) Bounds() (float64, float64) {
-	return d.T - 1, d.T + 1
-}
-
-func (d Delta) Integrate() Func {
-	return UnitStep{d.T}
-}
-
-// UnitStep is the Heaviside step function, centered at T.  This uses
-// the convention that f(T) == 1, so it is the cumulative distribution
-// function of the delta function.
-type UnitStep struct {
-	T float64
-}
-
-func (u UnitStep) At(x float64) float64 {
-	if x >= u.T {
+func (d Delta) CDF(x float64) float64 {
+	if x >= d.T {
 		return 1
 	}
 	return 0
 }
 
-func (u UnitStep) AtEach(xs []float64) []float64 {
+func (d Delta) CDFEach(xs []float64) []float64 {
 	res := make([]float64, len(xs))
 	for i, x := range xs {
-		if x >= u.T {
-			res[i] = 1
-		}
+		res[i] = d.CDF(x)
 	}
 	return res
 }
 
-func (u UnitStep) Bounds() (float64, float64) {
-	return u.T - 1, u.T + 1
+func (d Delta) InvCDF(y float64) float64 {
+	if y < 0 || y > 1 {
+		return nan
+	}
+	return d.T
 }
 
-func (u UnitStep) Integrate() Func {
-	return nil
+func (d Delta) InvCDFEach(ys []float64) []float64 {
+	res := make([]float64, len(ys))
+	for i, y := range ys {
+		res[i] = d.InvCDF(y)
+	}
+	return res
+}
+
+func (d Delta) Bounds() (float64, float64) {
+	return d.T - 1, d.T + 1
 }

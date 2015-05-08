@@ -24,7 +24,7 @@ type TTestResult struct {
 
 func newTTestResult(t, dof float64) *TTestResult {
 	// Compute two-tailed p-value.
-	p := 2 * (1 - TDist{dof}.Integrate().At(math.Abs(t)))
+	p := 2 * (1 - TDist{dof}.CDF(math.Abs(t)))
 	return &TTestResult{T: t, P: p, DoF: dof}
 }
 
