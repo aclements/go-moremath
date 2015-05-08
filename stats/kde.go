@@ -209,6 +209,12 @@ func (k KDE) FromSample(s Sample) Func {
 	return &kdePDF{kernel, s.Xs, s.Weights, bm, min, max}
 }
 
+// TODO: Instead of FromHistogram, make histogram able to create a
+// weighted Sample and have a method that takes a sample and its
+// statistics interface separately (or have the caller produce their
+// own FixedBandwidth and expose the bandwidth estimators in terms of
+// the statistics interfaces they each require).
+
 // FromHistogram returns the probability density function of the kernel
 // density estimate for hist.
 //
