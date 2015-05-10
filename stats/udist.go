@@ -17,71 +17,110 @@ type UDist struct {
 	M, N int
 }
 
-func (d UDist) newMemo(U int) [][][]float64 {
-	base := make([]float64, U+1)
-	for i := 0; i < U+1; i++ {
-		base[i] = -1
+// p returns the p_{d.N,d.M} function defined by Mann, Whitney 1947
+// for values of U from 0 up to and including the U argument.
+func (d UDist) p(U int) []float64 {
+	// This is a dynamic programming implementation of the
+	// recursive recurrence definition given by Mann and Whitney:
+	//
+	//   p_{n,m}(U) = (n * p_{n-1,m}(U-m) + m * p_{n,m-1}(U)) / (n+m)
+	//   p_{n,m}(U) = 0                           if U < 0
+	//   p_{0,m}(U) = p{n,0}(U) = 1 / nCr(m+n, n) if U = 0
+	//                          = 0               if U > 0
+	//
+	// (Note that there is a typo in the original paper. The first
+	// recursive application of p should be for U-m, not U-M.)
+	//
+	// Since p{n,m} only depends on p{n-1,m} and p{n,m-1}, we only
+	// need to store one "plane" of the three dimensional space at
+	// a time.
+	//
+	// Furthermore, p_{n,m} = p_{m,n}, so we only construct values
+	// for n <= m and obtain the rest through symmetry.
+	//
+	// We organize the computed values of p as followed:
+	//
+	//       n →   N
+	//     m *
+	//     ↓ * *
+	//       * * *
+	//       * * * *
+	//       * * * *
+	//     M * * * *
+	//
+	// where each * is a slice indexed by U. The code below
+	// computes these left-to-right, top-to-bottom, so it only
+	// stores one row of this matrix at a time. Furthermore,
+	// computing an element in a given U slice only depends on the
+	// same and smaller values of U, so we can overwrite the U
+	// slice we're computing in place as long as we start with the
+	// largest value of U. Finally, even though the recurrence
+	// depends on (n,m) above the diagonal and we use symmetry to
+	// mirror those across the diagonal to (m,n), the mirrored
+	// indexes are always available in the current row, so this
+	// mirroring does not interfere with our ability to recycle
+	// state.
+
+	N, M := d.N, d.M
+	if N > M {
+		N, M = M, N
 	}
-	// TODO: We only use half of this table, since n <= m.
-	memo := make([][][]float64, d.N+1)
-	for n := 0; n < d.N+1; n++ {
-		memo1 := make([][]float64, d.M+1)
-		memo[n] = memo1
-		for m := 0; m < d.M+1; m++ {
-			memo1[m] = append([]float64(nil), base...)
-		}
+
+	memo := make([][]float64, N+1)
+	for n := range memo {
+		memo[n] = make([]float64, U+1)
 	}
-	return memo
-}
 
-func (d UDist) pdf(memo [][][]float64, U int) float64 {
-	// TODO: I'm almost certain this can be done with dynamic
-	// programming, which would eliminate the huge call/stack
-	// overhead and cut down the table size by a factor of max(n,
-	// m).
-	var rec func(n, m, U int) float64
-	rec = func(n, m, U int) float64 {
-		if U < 0 {
-			return 0
-		}
-		if m > n {
-			// rec(m, n, U) = rec(n, m, U), so keep m and
-			// n in order in order to reuse more
-			// computation.
-			m, n = n, m
-		}
+	for m := 0; m <= M; m++ {
+		// Compute p_{0,m}. This is zero except for U=0.
+		memo[0][0] = 1
 
-		memop := &memo[n][m][U]
-		if *memop != -1 {
-			return *memop
+		// Compute the remainder of this row.
+		nlim := N
+		if m < nlim {
+			nlim = m
 		}
-
-		var v float64
-		if m == 0 {
-			if U != 0 {
-				v = 0
+		for n := 1; n <= nlim; n++ {
+			lp := memo[n-1] // p_{n-1,m}
+			var rp []float64
+			if n <= m-1 {
+				rp = memo[n] // p_{n,m-1}
 			} else {
-				v = 1 / float64(choose(m+n, n))
+				rp = memo[m-1] // p{m-1,n} and m==n
 			}
-		} else {
-			// Note that there's a typo in the Mann-Whitney paper.
-			// This recurrence is written in terms of U-M. It's
-			// supposed to be U-m.
-			v = (float64(n)*rec(n-1, m, U-m) + float64(m)*rec(n, m-1, U)) / float64(n+m)
+
+			// For a given n,m, U is at most n*m.
+			//
+			// TODO: Actually, it's at most ⌈n*m/2⌉, but
+			// then we need to use more complex symmetries
+			// in the inner loop below.
+			ulim := n * m
+			if U < ulim {
+				ulim = U
+			}
+
+			out := memo[n] // p_{n,m}
+			nplusm := float64(n + m)
+			for U1 := ulim; U1 >= 0; U1-- {
+				l := 0.0
+				if U1-m >= 0 {
+					l = float64(n) * lp[U1-m]
+				}
+				r := float64(m) * rp[U1]
+				out[U1] = (l + r) / nplusm
+			}
 		}
-		*memop = v
-		return v
 	}
-	return rec(d.N, d.M, U)
+	return memo[N]
 }
 
 func (d UDist) PMF(U float64) float64 {
 	Ui := int(math.Floor(U))
+	// TODO: Use symmetry to minimize U
 	if Ui < 0 || Ui > d.M*d.N {
 		return 0
 	}
-	memo := d.newMemo(Ui)
-	return d.pdf(memo, Ui)
+	return d.p(Ui)[Ui]
 }
 
 func (d UDist) CDF(U float64) float64 {
@@ -97,10 +136,10 @@ func (d UDist) CDF(U float64) float64 {
 	if flip {
 		Ui = d.M*d.N - Ui - 1
 	}
-	memo := d.newMemo(Ui)
+	pdfs := d.p(Ui)
 	p := 0.0
-	for i := 0; i <= Ui; i++ {
-		p += d.pdf(memo, i)
+	for _, pdf := range pdfs[:Ui+1] {
+		p += pdf
 	}
 	if flip {
 		p = 1 - p
