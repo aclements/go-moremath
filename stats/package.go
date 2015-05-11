@@ -5,7 +5,14 @@
 // stats is a grab bag of statistical routines.
 package stats // import "github.com/aclements/go-moremath/stats"
 
-import "math"
+import (
+	"errors"
+	"math"
+)
 
 var inf = math.Inf(1)
 var nan = math.NaN()
+
+var (
+	ErrSamplesEqual = errors.New("all samples are equal")
+)

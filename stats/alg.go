@@ -12,14 +12,16 @@ import (
 )
 
 // sign returns the sign of x: -1 if x < 0, 0 if x == 0, 1 if x > 0.
-func sign(x float64) int {
+// If x is NaN, it returns NaN.
+func sign(x float64) float64 {
 	if x == 0 {
 		return 0
 	} else if x < 0 {
 		return -1
-	} else {
+	} else if x > 0 {
 		return 1
 	}
+	return nan
 }
 
 // lchoose returns math.Log(choose(n, k)).
