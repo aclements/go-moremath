@@ -33,17 +33,17 @@ func TestMannWhitneyUTest(t *testing.T) {
 	r, _ = MannWhitneyUTest(s1, s3)
 	check(&MannWhitneyUTestResult{4, 4, 5, 0.485714285714285770}, r)
 
-	// Small sample, ties (this will change once we handle ties
-	// without the normal approximation).
+	// Small sample, ties
+	// TODO: Check these against some other implementation.
 
 	r, _ = MannWhitneyUTest(s1, s1)
 	check(&MannWhitneyUTestResult{4, 4, 8, 1}, r)
 
 	r, _ = MannWhitneyUTest(s1, s4)
-	check(&MannWhitneyUTestResult{4, 4, 6, 0.6198391186854189}, r)
+	check(&MannWhitneyUTestResult{4, 4, 6, 0.7142857142857143}, r)
 
 	r, _ = MannWhitneyUTest(s1, s5)
-	check(&MannWhitneyUTestResult{4, 5, 2.5, 0.04162006292836562}, r)
+	check(&MannWhitneyUTestResult{4, 5, 2.5, 0}, r)
 
 	r, err = MannWhitneyUTest(s4, s4)
 	if err != ErrSamplesEqual {

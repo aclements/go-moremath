@@ -12,6 +12,8 @@ import (
 // A MannWhitneyUTestResult is the result of a Mann-Whitney U-test.
 type MannWhitneyUTestResult struct {
 	// M and N are the sizes of the input samples.
+	//
+	// TODO: N1 and N2?
 	M, N int
 
 	// U is the value of the Mann-Whitney U statistic for this
@@ -33,6 +35,10 @@ type MannWhitneyUTestResult struct {
 	// (generalized for ties) is U + (M(M+1))/2. It is also common
 	// to use 2U to eliminate the half steps and Smid (1956) uses
 	// M*N - 2U to additionally center the distribution.
+	//
+	// TODO: Maybe this should always be the U statistic of the
+	// first sample. Currently you can't back out which of the two
+	// samples this is the U for.
 	U float64
 
 	// P is the two-tailed p-value of the Mann-Whitney test.
@@ -53,7 +59,17 @@ type MannWhitneyUTestResult struct {
 // takes a few milliseconds on a 2014 laptop.
 var MannWhitneyExactLimit = 50
 
-// MannWhitneyUTest performs a Mann-Whitney U-test [1] of the null
+// MannWhitneyTiesExactLimit gives the largest sample size for which
+// the exact U distribution will be used for the Mann-Whitney U-test
+// in the presence of ties.
+//
+// Computing this distribution is (currently) much more expensive than
+// computing the distribution without ties, so this is set much lower.
+// Computing this distribution for two 9 value samples takes a few
+// tens of milliseconds on a 2014 laptop.
+var MannWhitneyTiesExactLimit = 9
+
+// MannWhitneyUTest performs a Mann-Whitney U-test [1,2] of the null
 // hypothesis that two samples come from the same population against
 // the alternative hypothesis that one sample tends to have larger or
 // smaller values than the other.
@@ -65,11 +81,10 @@ var MannWhitneyExactLimit = 50
 //
 // Computing the exact U distribution is expensive for large sample
 // sizes, so this uses a normal approximation for sample sizes larger
-// than MannWhitneyExactLimit. This normal approximation uses both the
-// tie correction and the continuity correction.
-//
-// TODO: This also uses the approximation if the samples have ties.
-// This should be fixed.
+// than MannWhitneyExactLimit if there are no ties or
+// MannWhitneyTiesExactLimit if there are ties. This normal
+// approximation uses both the tie correction and the continuity
+// correction.
 //
 // This can fail with ErrSampleSize if either sample is empty or
 // ErrSamplesEqual if all sample values are equal.
@@ -81,13 +96,16 @@ var MannWhitneyExactLimit = 50
 // [1] Mann, Henry B.; Whitney, Donald R. (1947). "On a Test of
 // Whether one of Two Random Variables is Stochastically Larger than
 // the Other". Annals of Mathematical Statistics 18 (1): 50–60.
+//
+// [2] Klotz, J. H. (1966). "The Wilcoxon, Ties, and the Computer".
+// Journal of the American Statistical Association 61 (315): 772-787.
 func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
 	n1, n2 := len(x1), len(x2)
 	if n1 == 0 || n2 == 0 {
 		return nil, ErrSampleSize
 	}
 
-	// Compute the U statistic.
+	// Compute the U statistic and tie vector T.
 	x1 = append([]float64(nil), x1...)
 	x2 = append([]float64(nil), x2...)
 	sort.Float64s(x1)
@@ -95,7 +113,7 @@ func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
 	merged, labels := labeledMerge(x1, x2)
 
 	R1 := 0.0
-	ties := false
+	T, hasTies := []int{}, false
 	for i := 0; i < len(merged); {
 		rank1, nx1, v1 := i+1, 0, merged[i]
 		// Consume samples that tie this sample (including itself).
@@ -104,14 +122,15 @@ func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
 				nx1++
 			}
 		}
-		if i > rank1 {
-			ties = true
-		}
 		// Assign all tied samples the average rank of the
 		// samples, where merged[0] has rank 1.
 		if nx1 != 0 {
 			rank := float64(i+rank1) / 2
 			R1 += rank * float64(nx1)
+		}
+		T = append(T, i-rank1+1)
+		if i > rank1 {
+			hasTies = true
 		}
 	}
 	U1 := R1 - float64(n1*(n1+1))/2
@@ -122,11 +141,25 @@ func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
 		U1, U2 = U2, U1
 	}
 
-	// TODO: Use exact distribution when there are ties.
 	var p float64
-	if !ties && n1 <= MannWhitneyExactLimit && n2 <= MannWhitneyExactLimit {
+	if !hasTies && n1 <= MannWhitneyExactLimit && n2 <= MannWhitneyExactLimit ||
+		hasTies && n1 <= MannWhitneyTiesExactLimit && n2 <= MannWhitneyTiesExactLimit {
 		// Use exact U distribution. U1 will be an integer.
-		p = UDist{M: n1, N: n2}.CDF(U1) * 2
+		if len(T) == 1 {
+			// All values are equal. Test is meaningless.
+			return nil, ErrSamplesEqual
+		} else if U1 == U2 {
+			// The distribution is symmetric about U1.
+			// Since the distribution is discrete, the CDF
+			// is discontinuous and if simply double
+			// CDF(U1), we'll double count the
+			// (non-infinitesimal) probability mass at U1.
+			// What we want is just the integral of the
+			// whole CDF, which is 1.
+			p = 1
+		} else {
+			p = UDist{M: n1, N: n2, T: T}.CDF(U1) * 2
+		}
 	} else {
 		// Use normal approximation (with tie and continuity
 		// correction).

@@ -24,6 +24,28 @@ func sign(x float64) float64 {
 	return nan
 }
 
+func maxint(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minint(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func sumint(xs []int) int {
+	sum := 0
+	for _, x := range xs {
+		sum += x
+	}
+	return sum
+}
+
 // lchoose returns math.Log(choose(n, k)).
 func lchoose(n, k int) float64 {
 	a, _ := math.Lgamma(float64(n + 1))
