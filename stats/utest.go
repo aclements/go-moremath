@@ -156,7 +156,7 @@ func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
 	} else {
 		// Use normal approximation (with tie and continuity
 		// correction).
-		t := tieCorrection(merged)
+		t := tieCorrection(T)
 		N := float64(n1 + n2)
 		μ_U := float64(n1*n2) / 2
 		σ_U := math.Sqrt(float64(n1*n2) * ((N + 1) - t/(N*(N-1))) / 12)
@@ -208,14 +208,10 @@ func labeledMerge(x1, x2 []float64) (merged []float64, labels []byte) {
 
 // tieCorrection computes the tie correction factor Σ_j (t_j³ - t_j)
 // where t_j is the number of ties in the j'th rank.
-func tieCorrection(xs []float64) float64 {
+func tieCorrection(ties []int) float64 {
 	t := 0
-	for i := 0; i < len(xs); {
-		i1, v1 := i, xs[i]
-		for ; i < len(xs) && xs[i] == v1; i++ {
-		}
-		run := i - i1
-		t += run*run*run - run
+	for _, tie := range ties {
+		t += tie*tie*tie - tie
 	}
 	return float64(t)
 }
