@@ -11,10 +11,8 @@ import (
 
 // A MannWhitneyUTestResult is the result of a Mann-Whitney U-test.
 type MannWhitneyUTestResult struct {
-	// M and N are the sizes of the input samples.
-	//
-	// TODO: N1 and N2?
-	M, N int
+	// N1 and N2 are the sizes of the input samples.
+	N1, N2 int
 
 	// U is the value of the Mann-Whitney U statistic for this
 	// test, generalized by counting ties as 0.5.
@@ -24,17 +22,18 @@ type MannWhitneyUTestResult struct {
 	// less than the value of the second, plus 0.5 times the
 	// number of pairs where the values from the two samples are
 	// equal. Hence, U is always an integer multiple of 0.5 (it is
-	// a whole integer if there are no ties) in the range [0, M*N].
+	// a whole integer if there are no ties) in the range [0, N1*N2].
 	//
 	// The value of U given here is always the smaller of the two
 	// possible values of U (depending which sample is "first").
-	// The other U can be calculated as M*N - U.
+	// The other U can be calculated as N1*N2 - U.
 	//
 	// There are many equivalent statistics with slightly
 	// different definitions. The Wilcoxon (1945) W statistic
-	// (generalized for ties) is U + (M(M+1))/2. It is also common
-	// to use 2U to eliminate the half steps and Smid (1956) uses
-	// M*N - 2U to additionally center the distribution.
+	// (generalized for ties) is U + (N1(N1+1))/2. It is also
+	// common to use 2U to eliminate the half steps and Smid
+	// (1956) uses N1*N2 - 2U to additionally center the
+	// distribution.
 	//
 	// TODO: Maybe this should always be the U statistic of the
 	// first sample. Currently you can't back out which of the two
@@ -177,7 +176,7 @@ func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
 		}
 	}
 
-	return &MannWhitneyUTestResult{M: n1, N: n2, U: U1, P: p}, nil
+	return &MannWhitneyUTestResult{N1: n1, N2: n2, U: U1, P: p}, nil
 }
 
 // labeledMerge merges sorted lists x1 and x2 into sorted list merged.

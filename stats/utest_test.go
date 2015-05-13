@@ -69,11 +69,11 @@ func TestMannWhitneyUTest(t *testing.T) {
 	// l3 <- l2; for (i in 1:30) { l3[i] = l1[i] }
 
 	r, _ = MannWhitneyUTest(l1, l2)
-	check(&MannWhitneyUTestResult{M: 500, N: 600, U: 135250, P: 0.0049335360814172224}, r)
+	check(&MannWhitneyUTestResult{N1: 500, N2: 600, U: 135250, P: 0.0049335360814172224}, r)
 
 	r, _ = MannWhitneyUTest(l1, l1)
-	check(&MannWhitneyUTestResult{M: 500, N: 500, U: 125000, P: 1}, r)
+	check(&MannWhitneyUTestResult{N1: 500, N2: 500, U: 125000, P: 1}, r)
 
 	r, _ = MannWhitneyUTest(l1, l3)
-	check(&MannWhitneyUTestResult{M: 500, N: 600, U: 134845, P: 0.0038703814239617884}, r)
+	check(&MannWhitneyUTestResult{N1: 500, N2: 600, U: 134845, P: 0.0038703814239617884}, r)
 }
