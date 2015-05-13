@@ -10,7 +10,7 @@ import (
 )
 
 // A UDist is the discrete probability distribution of the
-// Mann-Whitney U statistic for a pair of samples of sizes M and N.
+// Mann-Whitney U statistic for a pair of samples of sizes N1 and N2.
 //
 // The details of computing this distribution with no ties can be
 // found in Mann, Henry B.; Whitney, Donald R. (1947). "On a Test of
@@ -26,7 +26,7 @@ import (
 // easiest to get the context from the former paper and the details
 // from the latter).
 type UDist struct {
-	M, N int
+	N1, N2 int
 
 	// T is the count of the number of ties at each rank in the
 	// input distributions. T may be nil, in which case it is
@@ -45,11 +45,11 @@ func (d UDist) hasTies() bool {
 	return false
 }
 
-// p returns the p_{d.N,d.M} function defined by Mann, Whitney 1947
+// p returns the p_{d.N1,d.N2} function defined by Mann, Whitney 1947
 // for values of U from 0 up to and including the U argument.
 //
-// This algorithm runs in Θ(mnU) = O(m²n²) time and is quite fast for
-// small values of m and n. However, it does not handle ties.
+// This algorithm runs in Θ(N1*N2*U) = O(N1²N2²) time and is quite
+// fast for small values of N1 and N2. However, it does not handle ties.
 func (d UDist) p(U int) []float64 {
 	// This is a dynamic programming implementation of the
 	// recursive recurrence definition given by Mann and Whitney:
@@ -92,7 +92,7 @@ func (d UDist) p(U int) []float64 {
 	// mirroring does not interfere with our ability to recycle
 	// state.
 
-	N, M := d.N, d.M
+	N, M := d.N1, d.N2
 	if N > M {
 		N, M = M, N
 	}
@@ -180,7 +180,7 @@ func (d UDist) permCount(twoUthresh int, cmp int) (count float64) {
 		}
 
 		// Is this a legal u vector?
-		if sumint(u) != d.M {
+		if sumint(u) != d.N1 {
 			// TODO: Implement optimized enumeration
 			// method that does not construct illegal
 			// candidates.
@@ -222,19 +222,19 @@ func (d UDist) permCount(twoUthresh int, cmp int) (count float64) {
 			//
 			// Convert 2U = 2UQV' to UQt' used in Klotz
 			// examples.
-			UQt := float64(twoU)/2 + float64(d.M*d.M)/2
+			UQt := float64(twoU)/2 + float64(d.N1*d.N1)/2
 			fmt.Printf("%+v %f %-2d\n", u, UQt, prod)
 		}
 	}
 }
 
 func (d UDist) PMF(U float64) float64 {
-	if U < 0 || U >= 0.5+float64(d.M*d.N) {
+	if U < 0 || U >= 0.5+float64(d.N1*d.N2) {
 		return 0
 	}
 
 	if d.hasTies() {
-		return d.permCount(int(2*U), 0) / float64(choose(d.M+d.N, d.M))
+		return d.permCount(int(2*U), 0) / float64(choose(d.N1+d.N2, d.N1))
 	}
 
 	// There are no ties. Use the fast algorithm. U must be integral.
@@ -246,21 +246,21 @@ func (d UDist) PMF(U float64) float64 {
 func (d UDist) CDF(U float64) float64 {
 	if U < 0 {
 		return 0
-	} else if U >= float64(d.M*d.N) {
+	} else if U >= float64(d.N1*d.N2) {
 		return 1
 	}
 
 	if d.hasTies() {
-		return d.permCount(int(2*U), -1) / float64(choose(d.M+d.N, d.M))
+		return d.permCount(int(2*U), -1) / float64(choose(d.N1+d.N2, d.N1))
 	}
 
 	// There are no ties. Use the fast algorithm. U must be integral.
 	Ui := int(math.Floor(U))
 	// The distribution is symmetric around U = m * n / 2. Sum up
 	// whichever tail is smaller.
-	flip := Ui >= (d.M*d.N+1)/2
+	flip := Ui >= (d.N1*d.N2+1)/2
 	if flip {
-		Ui = d.M*d.N - Ui - 1
+		Ui = d.N1*d.N2 - Ui - 1
 	}
 	pdfs := d.p(Ui)
 	p := 0.0
@@ -279,5 +279,5 @@ func (d UDist) Step() float64 {
 
 func (d UDist) Bounds() (float64, float64) {
 	// TODO: More precise bounds when there are ties.
-	return 0, float64(d.M * d.N)
+	return 0, float64(d.N1 * d.N2)
 }

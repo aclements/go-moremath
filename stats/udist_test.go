@@ -56,7 +56,7 @@ func TestUDist(t *testing.T) {
 		for U := 0; U < 6; U++ {
 			out[U] = make([]float64, n)
 			for m := 1; m <= n; m++ {
-				out[U][m-1] = UDist{N: n, M: m}.CDF(float64(U))
+				out[U][m-1] = UDist{N1: m, N2: n}.CDF(float64(U))
 			}
 		}
 		return out
@@ -94,14 +94,14 @@ func BenchmarkUDist(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// R uses the exact distribution up to N=50.
 		// N*M/2=1250 is the hardest point to get the CDF for.
-		UDist{N: 50, M: 50}.CDF(1250)
+		UDist{N1: 50, N2: 50}.CDF(1250)
 	}
 }
 
 func TestUDistTies(t *testing.T) {
 	makeTable := func(m, N int, t []int, minx, maxx float64) [][]float64 {
 		out := [][]float64{}
-		dist := UDist{M: m, N: N - m, T: t}
+		dist := UDist{N1: m, N2: N - m, T: t}
 		for x := minx; x <= maxx; x += 0.5 {
 			// Convert x from uQt' to uQv'.
 			U := x - float64(m*m)/2
@@ -125,7 +125,7 @@ func TestUDistTies(t *testing.T) {
 	//
 	// Note: To print the table in section 5, set the threshold to
 	// 0 and enable the debug print in UDist.permCount.
-	dist := UDist{M: 4, N: (2 + 4 + 3 + 1) - 4, T: []int{2, 4, 3, 1}}
+	dist := UDist{N1: 4, N2: (2 + 4 + 3 + 1) - 4, T: []int{2, 4, 3, 1}}
 	c := dist.permCount(int(2*13.5), 1)
 	if c != 89 {
 		t.Errorf("For %+v, want P[UQV' >= 21.5 | T = t] = 89, got %f", dist, c)
@@ -200,6 +200,6 @@ func BenchmarkUDistTies(b *testing.B) {
 	t[0] = 2
 
 	for i := 0; i < b.N; i++ {
-		UDist{N: n, M: n, T: t}.CDF(float64(n*n) / 2)
+		UDist{N1: n, N2: n, T: t}.CDF(float64(n*n) / 2)
 	}
 }

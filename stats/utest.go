@@ -157,7 +157,7 @@ func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
 			// whole CDF, which is 1.
 			p = 1
 		} else {
-			p = UDist{M: n1, N: n2, T: T}.CDF(U1) * 2
+			p = UDist{N1: n1, N2: n2, T: T}.CDF(U1) * 2
 		}
 	} else {
 		// Use normal approximation (with tie and continuity
