@@ -19,14 +19,14 @@ type MannWhitneyUTestResult struct {
 	//
 	// Given the Cartesian product of the two samples, this is the
 	// number of pairs in which the value from the first sample is
-	// less than the value of the second, plus 0.5 times the
+	// greater than the value of the second, plus 0.5 times the
 	// number of pairs where the values from the two samples are
 	// equal. Hence, U is always an integer multiple of 0.5 (it is
 	// a whole integer if there are no ties) in the range [0, N1*N2].
 	//
-	// The value of U given here is always the smaller of the two
-	// possible values of U (depending which sample is "first").
-	// The other U can be calculated as N1*N2 - U.
+	// U statistics always come in pairs, depending on which
+	// sample is "first". The mirror U for the other sample can be
+	// calculated as N1*N2 - U.
 	//
 	// There are many equivalent statistics with slightly
 	// different definitions. The Wilcoxon (1945) W statistic
@@ -34,10 +34,6 @@ type MannWhitneyUTestResult struct {
 	// common to use 2U to eliminate the half steps and Smid
 	// (1956) uses N1*N2 - 2U to additionally center the
 	// distribution.
-	//
-	// TODO: Maybe this should always be the U statistic of the
-	// first sample. Currently you can't back out which of the two
-	// samples this is the U for.
 	U float64
 
 	// P is the two-tailed p-value of the Mann-Whitney test.
@@ -136,9 +132,7 @@ func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
 
 	// Compute the smaller of U1 and U2
 	U2 := float64(n1*n2) - U1
-	if U2 < U1 {
-		U1, U2 = U2, U1
-	}
+	Usmall := math.Min(U1, U2)
 
 	var p float64
 	if !hasTies && n1 <= MannWhitneyExactLimit && n2 <= MannWhitneyExactLimit ||
@@ -148,16 +142,16 @@ func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
 			// All values are equal. Test is meaningless.
 			return nil, ErrSamplesEqual
 		} else if U1 == U2 {
-			// The distribution is symmetric about U1.
+			// The distribution is symmetric about Usmall.
 			// Since the distribution is discrete, the CDF
 			// is discontinuous and if simply double
-			// CDF(U1), we'll double count the
-			// (non-infinitesimal) probability mass at U1.
+			// CDF(Usmall), we'll double count the
+			// (non-infinitesimal) probability mass at Usmall.
 			// What we want is just the integral of the
 			// whole CDF, which is 1.
 			p = 1
 		} else {
-			p = UDist{N1: n1, N2: n2, T: T}.CDF(U1) * 2
+			p = UDist{N1: n1, N2: n2, T: T}.CDF(Usmall) * 2
 		}
 	} else {
 		// Use normal approximation (with tie and continuity
@@ -166,7 +160,7 @@ func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
 		N := float64(n1 + n2)
 		μ_U := float64(n1*n2) / 2
 		σ_U := math.Sqrt(float64(n1*n2) * ((N + 1) - t/(N*(N-1))) / 12)
-		numer := U1 - μ_U
+		numer := Usmall - μ_U
 		numer -= sign(numer) * 0.5 // Continuity correction
 		if σ_U == 0 {
 			return nil, ErrSamplesEqual

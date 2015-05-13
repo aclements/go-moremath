@@ -28,7 +28,7 @@ func TestMannWhitneyUTest(t *testing.T) {
 	check(&MannWhitneyUTestResult{4, 4, 0, 0.028571428571428577}, r)
 
 	r, _ = MannWhitneyUTest(s2, s1)
-	check(&MannWhitneyUTestResult{4, 4, 0, 0.028571428571428577}, r)
+	check(&MannWhitneyUTestResult{4, 4, 16, 0.028571428571428577}, r)
 
 	r, _ = MannWhitneyUTest(s1, s3)
 	check(&MannWhitneyUTestResult{4, 4, 5, 0.485714285714285770}, r)
@@ -40,10 +40,10 @@ func TestMannWhitneyUTest(t *testing.T) {
 	check(&MannWhitneyUTestResult{4, 4, 8, 1}, r)
 
 	r, _ = MannWhitneyUTest(s1, s4)
-	check(&MannWhitneyUTestResult{4, 4, 6, 0.7142857142857143}, r)
+	check(&MannWhitneyUTestResult{4, 4, 10, 0.7142857142857143}, r)
 
 	r, _ = MannWhitneyUTest(s1, s5)
-	check(&MannWhitneyUTestResult{4, 5, 2.5, 0}, r)
+	check(&MannWhitneyUTestResult{4, 5, 17.5, 0}, r)
 
 	r, err = MannWhitneyUTest(s4, s4)
 	if err != ErrSamplesEqual {
