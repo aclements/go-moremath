@@ -5,8 +5,34 @@
 package stats
 
 import (
+	"fmt"
 	"math"
 	"sort"
+)
+
+// A LocationHypothesis specifies the alternative hypothesis of a
+// location test such as a t-test or a Mann-Whitney U-test. The
+// default (zero) value is to test against the alternative hypothesis
+// that they differ.
+type LocationHypothesis int
+
+//go:generate stringer -type LocationHypothesis
+
+const (
+	// LocationLess specifies the alternative hypothesis that the
+	// location of the first sample is less than the second. This
+	// is a one-tailed test.
+	LocationLess LocationHypothesis = -1
+
+	// LocationDiffers specifies the alternative hypothesis that
+	// the locations of the two samples are not equal. This is a
+	// two-tailed test.
+	LocationDiffers LocationHypothesis = 0
+
+	// LocationGreater specifies the alternative hypothesis that
+	// the location of the first sample is greater than the
+	// second. This is a one-tailed test.
+	LocationGreater LocationHypothesis = 1
 )
 
 // A MannWhitneyUTestResult is the result of a Mann-Whitney U-test.
@@ -36,10 +62,13 @@ type MannWhitneyUTestResult struct {
 	// distribution.
 	U float64
 
-	// P is the two-tailed p-value of the Mann-Whitney test.
-	//
-	// TODO: One-tailed? It's not just P/2. Should I add
-	// one-tailed as another field, or take it as an argument?
+	// AltHypothesis specifies the alternative hypothesis tested
+	// by this test against the null hypothesis that there is no
+	// difference in the locations of the samples.
+	AltHypothesis LocationHypothesis
+
+	// P is the p-value of the Mann-Whitney test for the given
+	// null hypothesis.
 	P float64
 }
 
@@ -88,13 +117,19 @@ var MannWhitneyTiesExactLimit = 9
 // equivalent to the Wilcoxon rank-sum test, though the Wilcoxon
 // rank-sum test differs in nomenclature.
 //
+// Currently only alt==LocationDiffers is implemented.
+//
 // [1] Mann, Henry B.; Whitney, Donald R. (1947). "On a Test of
 // Whether one of Two Random Variables is Stochastically Larger than
 // the Other". Annals of Mathematical Statistics 18 (1): 50–60.
 //
 // [2] Klotz, J. H. (1966). "The Wilcoxon, Ties, and the Computer".
 // Journal of the American Statistical Association 61 (315): 772-787.
-func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
+func MannWhitneyUTest(x1, x2 []float64, alt LocationHypothesis) (*MannWhitneyUTestResult, error) {
+	if alt != LocationDiffers {
+		panic(fmt.Sprintf("not implemented: alternative hypothesis ", alt))
+	}
+
 	n1, n2 := len(x1), len(x2)
 	if n1 == 0 || n2 == 0 {
 		return nil, ErrSampleSize
@@ -170,7 +205,8 @@ func MannWhitneyUTest(x1, x2 []float64) (*MannWhitneyUTestResult, error) {
 		}
 	}
 
-	return &MannWhitneyUTestResult{N1: n1, N2: n2, U: U1, P: p}, nil
+	return &MannWhitneyUTestResult{N1: n1, N2: n2, U: U1,
+		AltHypothesis: alt, P: p}, nil
 }
 
 // labeledMerge merges sorted lists x1 and x2 into sorted list merged.
