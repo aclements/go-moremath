@@ -15,6 +15,24 @@ func TestMannWhitneyUTest(t *testing.T) {
 			t.Errorf("want %+v, got %+v", want, got)
 		}
 	}
+	check3 := func(x1, x2 []float64, U float64, pless, pdiff, pgreater float64) {
+		want := &MannWhitneyUTestResult{N1: len(x1), N2: len(x2), U: U}
+
+		want.AltHypothesis = LocationLess
+		want.P = pless
+		got, _ := MannWhitneyUTest(x1, x2, want.AltHypothesis)
+		check(want, got)
+
+		want.AltHypothesis = LocationDiffers
+		want.P = pdiff
+		got, _ = MannWhitneyUTest(x1, x2, want.AltHypothesis)
+		check(want, got)
+
+		want.AltHypothesis = LocationGreater
+		want.P = pgreater
+		got, _ = MannWhitneyUTest(x1, x2, want.AltHypothesis)
+		check(want, got)
+	}
 
 	s1 := []float64{2, 1, 3, 5}
 	s2 := []float64{12, 11, 13, 15}
@@ -23,27 +41,15 @@ func TestMannWhitneyUTest(t *testing.T) {
 	s5 := []float64{1, 1, 1, 1, 1}
 
 	// Small sample, no ties
-
-	r, _ := MannWhitneyUTest(s1, s2, LocationDiffers)
-	check(&MannWhitneyUTestResult{4, 4, 0, LocationDiffers, 0.028571428571428577}, r)
-
-	r, _ = MannWhitneyUTest(s2, s1, LocationDiffers)
-	check(&MannWhitneyUTestResult{4, 4, 16, LocationDiffers, 0.028571428571428577}, r)
-
-	r, _ = MannWhitneyUTest(s1, s3, LocationDiffers)
-	check(&MannWhitneyUTestResult{4, 4, 5, LocationDiffers, 0.485714285714285770}, r)
+	check3(s1, s2, 0, 0.014285714285714289, 0.028571428571428577, 1)
+	check3(s2, s1, 16, 1, 0.028571428571428577, 0.014285714285714289)
+	check3(s1, s3, 5, 0.24285714285714288, 0.485714285714285770, 0.8285714285714285)
 
 	// Small sample, ties
 	// TODO: Check these against some other implementation.
-
-	r, _ = MannWhitneyUTest(s1, s1, LocationDiffers)
-	check(&MannWhitneyUTestResult{4, 4, 8, LocationDiffers, 1}, r)
-
-	r, _ = MannWhitneyUTest(s1, s4, LocationDiffers)
-	check(&MannWhitneyUTestResult{4, 4, 10, LocationDiffers, 0.7142857142857143}, r)
-
-	r, _ = MannWhitneyUTest(s1, s5, LocationDiffers)
-	check(&MannWhitneyUTestResult{4, 5, 17.5, LocationDiffers, 0}, r)
+	check3(s1, s1, 8, 0.6285714285714286, 1, 0.6285714285714286)
+	check3(s1, s4, 10, 0.8571428571428571, 0.7142857142857143, 0.3571428571428571)
+	check3(s1, s5, 17.5, 1, 0, 0.04761904761904767)
 
 	r, err := MannWhitneyUTest(s4, s4, LocationDiffers)
 	if err != ErrSamplesEqual {
@@ -68,12 +74,7 @@ func TestMannWhitneyUTest(t *testing.T) {
 	// l2 <- seq(0,599)*2-41
 	// l3 <- l2; for (i in 1:30) { l3[i] = l1[i] }
 
-	r, _ = MannWhitneyUTest(l1, l2, LocationDiffers)
-	check(&MannWhitneyUTestResult{N1: 500, N2: 600, U: 135250, AltHypothesis: LocationDiffers, P: 0.0049335360814172224}, r)
-
-	r, _ = MannWhitneyUTest(l1, l1, LocationDiffers)
-	check(&MannWhitneyUTestResult{N1: 500, N2: 500, U: 125000, AltHypothesis: LocationDiffers, P: 1}, r)
-
-	r, _ = MannWhitneyUTest(l1, l3, LocationDiffers)
-	check(&MannWhitneyUTestResult{N1: 500, N2: 600, U: 134845, AltHypothesis: LocationDiffers, P: 0.0038703814239617884}, r)
+	check3(l1, l2, 135250, 0.0024667680407086112, 0.0049335360814172224, 0.9975346930458906)
+	check3(l1, l1, 125000, 0.5000436801680628, 1, 0.5000436801680628)
+	check3(l1, l3, 134845, 0.0019351907119808942, 0.0038703814239617884, 0.9980659818257166)
 }

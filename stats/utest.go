@@ -5,7 +5,6 @@
 package stats
 
 import (
-	"fmt"
 	"math"
 	"sort"
 )
@@ -117,8 +116,6 @@ var MannWhitneyTiesExactLimit = 9
 // equivalent to the Wilcoxon rank-sum test, though the Wilcoxon
 // rank-sum test differs in nomenclature.
 //
-// Currently only alt==LocationDiffers is implemented.
-//
 // [1] Mann, Henry B.; Whitney, Donald R. (1947). "On a Test of
 // Whether one of Two Random Variables is Stochastically Larger than
 // the Other". Annals of Mathematical Statistics 18 (1): 50–60.
@@ -126,10 +123,6 @@ var MannWhitneyTiesExactLimit = 9
 // [2] Klotz, J. H. (1966). "The Wilcoxon, Ties, and the Computer".
 // Journal of the American Statistical Association 61 (315): 772-787.
 func MannWhitneyUTest(x1, x2 []float64, alt LocationHypothesis) (*MannWhitneyUTestResult, error) {
-	if alt != LocationDiffers {
-		panic(fmt.Sprintf("not implemented: alternative hypothesis ", alt))
-	}
-
 	n1, n2 := len(x1), len(x2)
 	if n1 == 0 || n2 == 0 {
 		return nil, ErrSampleSize
@@ -176,17 +169,31 @@ func MannWhitneyUTest(x1, x2 []float64, alt LocationHypothesis) (*MannWhitneyUTe
 		if len(T) == 1 {
 			// All values are equal. Test is meaningless.
 			return nil, ErrSamplesEqual
-		} else if U1 == U2 {
-			// The distribution is symmetric about Usmall.
-			// Since the distribution is discrete, the CDF
-			// is discontinuous and if simply double
-			// CDF(Usmall), we'll double count the
-			// (non-infinitesimal) probability mass at Usmall.
-			// What we want is just the integral of the
-			// whole CDF, which is 1.
-			p = 1
-		} else {
-			p = UDist{N1: n1, N2: n2, T: T}.CDF(Usmall) * 2
+		}
+
+		dist := UDist{N1: n1, N2: n2, T: T}
+		switch alt {
+		case LocationDiffers:
+			if U1 == U2 {
+				// The distribution is symmetric about
+				// Usmall. Since the distribution is
+				// discrete, the CDF is discontinuous
+				// and if simply double CDF(Usmall),
+				// we'll double count the
+				// (non-infinitesimal) probability
+				// mass at Usmall. What we want is
+				// just the integral of the whole CDF,
+				// which is 1.
+				p = 1
+			} else {
+				p = dist.CDF(Usmall) * 2
+			}
+
+		case LocationLess:
+			p = dist.CDF(U1)
+
+		case LocationGreater:
+			p = 1 - dist.CDF(U1-1)
 		}
 	} else {
 		// Use normal approximation (with tie and continuity
@@ -195,13 +202,27 @@ func MannWhitneyUTest(x1, x2 []float64, alt LocationHypothesis) (*MannWhitneyUTe
 		N := float64(n1 + n2)
 		μ_U := float64(n1*n2) / 2
 		σ_U := math.Sqrt(float64(n1*n2) * ((N + 1) - t/(N*(N-1))) / 12)
-		numer := Usmall - μ_U
-		numer -= sign(numer) * 0.5 // Continuity correction
 		if σ_U == 0 {
 			return nil, ErrSamplesEqual
-		} else {
-			z := numer / σ_U
+		}
+		numer := U1 - μ_U
+		// Perform continuity correction.
+		switch alt {
+		case LocationDiffers:
+			numer -= sign(numer) * 0.5
+		case LocationLess:
+			numer += 0.5
+		case LocationGreater:
+			numer -= 0.5
+		}
+		z := numer / σ_U
+		switch alt {
+		case LocationDiffers:
 			p = 2 * math.Min(StdNormal.CDF(z), 1-StdNormal.CDF(z))
+		case LocationLess:
+			p = StdNormal.CDF(z)
+		case LocationGreater:
+			p = 1 - StdNormal.CDF(z)
 		}
 	}
 
