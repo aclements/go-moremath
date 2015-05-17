@@ -4,10 +4,7 @@
 
 package stats
 
-import (
-	"fmt"
-	"math"
-)
+import "math"
 
 // A UDist is the discrete probability distribution of the
 // Mann-Whitney U statistic for a pair of samples of sizes N1 and N2.
@@ -145,87 +142,167 @@ func (d UDist) p(U int) []float64 {
 	return memo[N]
 }
 
-// permCount returns the number of sample permutations under the tie
-// vector d.T with U statistic <=, == or >= twoUthresh/2, which can be
-// used to directly compute the PMF and CDF of the U distribution
-// under ties. This uses the "graphical method" of Klotz (1966). It is
-// (currently) very slow.
-func (d UDist) permCount(twoUthresh int, cmp int) (count float64) {
-	// TODO: This is exponential in len(T). Implementing the
-	// direct enumeration algorithm from Klotz will help, but I
-	// think it's still exponential. There's the "linked list"
-	// method from Cheung-Klotz; I can't make sense of that paper,
-	// but there's an implementation in appendix L of
-	// http://www.stat.wisc.edu/~klotz/Book.pdf. There's also van
-	// de Wiel, "The split-up algorithm: a fast symbolic method
-	// for computing p-values of distribution-free statistics"
-	// that sounds really promising, but I can't get my hands on
-	// it. The "split-up algorithm" seems to be the technique used
-	// by R's coin package.
+type ukey struct {
+	n1   int // size of first sample
+	twoU int // 2*U statistic for this permutation
+}
 
-	// Enumerate all u vectors such that  0 <= u_i <= t_i.
-	u := make([]int, len(d.T))
-	u[len(u)-1] = -1 // Get enumeration started.
-	for {
-		// Compute the next u vector.
-		u[len(u)-1]++
-		for i := len(u) - 1; i >= 0 && u[i] > d.T[i]; i-- {
-			if i == 0 {
-				// All u vectors have been enumerated.
-				return
+// This computes the CDF of the Mann-Whitney U distribution in the
+// presence of ties using the computation from Cheung, Ying Kuen;
+// Klotz, Jerome H. (1997). "The Mann Whitney Wilcoxon Distribution
+// Using Linked Lists". Statistica Sinica 7: 805-813, with much
+// guidance from appendix L of Klotz, A Computational Approach to
+// Statistics.
+//
+// makeUmemo constructs the memoization table for the cumulative
+// distribution of 2*U <= twoU, for sample sizes n1 and sum(t)-n1, and
+// tie vector t. The result is a table memo[K][ukey{n1, 2*U}]=pr,
+// where K is the number of ranks, n1 is the size of the first sample,
+// U is the U statistic. pr is the probability of a permutation of a
+// sample of size n1 in a ranking with tie vector t[:K] having a U
+// statistic <= U.
+func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
+	// Another candidate for a fast implementation is van de Wiel,
+	// "The split-up algorithm: a fast symbolic method for
+	// computing p-values of distribution-free statistics". This
+	// is what's used by R's coin package. It's a comparatively
+	// recent publication, so it's presumably faster (or perhaps
+	// just more general) than previous techniques, but I can't
+	// get my hands on the paper.
+
+	K := len(t)
+
+	// Compute a coefficients. The a slice is indexed by k (a[0]
+	// is unused).
+	a := make([]int, K+1)
+	a[1] = t[0]
+	for k := 2; k <= K; k++ {
+		a[k] = a[k-1] + t[k-2] + t[k-1]
+	}
+
+	// Create the memo table for the probability function. The pr
+	// slice is indexed by k (pr[0] is unused).
+	//
+	// In "The Mann Whitney Distribution Using Linked Lists", they
+	// use linked lists (*gasp*) for this, but within each K it's
+	// really just a memoization table, so it's faster to use a
+	// map. The outer structure is a slice indexed by k because we
+	// need to find all memo entries with certain values of k.
+	//
+	// TODO: Compute the A function and normalize it to a
+	// probability at the end. This should be much cheaper to
+	// compute.
+	//
+	// TODO: The n1 and twoU values in the ukeys follow strict
+	// patterns. For each K value, the n1 values are every integer
+	// between two bounds. For each (K, n1) value, the twoU values
+	// are every integer multiple of a certain base between two
+	// bounds. It might be worth turning these into directly
+	// indexible slices.
+	pr := make([]map[ukey]float64, K+1)
+	pr[K] = map[ukey]float64{ukey{n1: n1, twoU: twoU}: 0}
+
+	// Compute memo table (k, n1, twoU) triples from high K values
+	// to low K values. This drives the recurrence relation
+	// downward to figure out all of the needed argument triples.
+	//
+	// TODO: Is it possible to generate this table bottom-up? If
+	// so, this could be a pure dynamic programming algorithm and
+	// we could discard the K dimension. We could at least store
+	// the inputs in a more compact representation that replaces
+	// the twoU dimension with an interval and a step size (as
+	// suggested by Cheung, Klotz, not that they make it at all
+	// clear *why* they're suggesting this).
+	tsum := sumint(t) // always ∑ t[0:k]
+	for k := K - 1; k >= 2; k-- {
+		tsum -= t[k]
+		pr[k] = make(map[ukey]float64)
+
+		// Construct pr[k] from pr[k+1].
+		for pr_kplus1 := range pr[k+1] {
+			rkLow := maxint(0, pr_kplus1.n1-tsum)
+			rkHigh := minint(pr_kplus1.n1, t[k])
+			for rk := rkLow; rk <= rkHigh; rk++ {
+				twoU_k := pr_kplus1.twoU - rk*(a[k+1]-2*pr_kplus1.n1+rk)
+				n1_k := pr_kplus1.n1 - rk
+				// TODO: Slice t instead of passing k?
+				if twoUmin(k, n1_k, t, a) <= twoU_k && twoU_k <= twoUmax(k, n1_k, t, a) {
+					key := ukey{n1: n1_k, twoU: twoU_k}
+					pr[k][key] = 0
+				}
 			}
-			// Carry.
-			u[i-1]++
-			u[i] = 0
-		}
-
-		// Is this a legal u vector?
-		if sumint(u) != d.N1 {
-			// TODO: Implement optimized enumeration
-			// method that does not construct illegal
-			// candidates.
-			continue
-		}
-
-		// TODO: Reuse partial U and prod computations.
-
-		// Compute 2*U statistic for this u vector.
-		twoU, vsum := 0, 0
-		for i, u_i := range u {
-			v_i := d.T[i] - u_i
-			// U = U + vsum*u_i + u_i*v_i/2
-			twoU += 2*vsum*u_i + u_i*v_i
-			vsum += v_i
-		}
-
-		if cmp < 0 && twoU > twoUthresh {
-			continue
-		} else if cmp == 0 && twoU != twoUthresh {
-			continue
-		} else if cmp > 0 && twoU < twoUthresh {
-			continue
-		}
-
-		// Compute Π choose(t_i, u_i). This is the number of
-		// ways of permuting the input sample under u.
-		prod := 1
-		for i, u_i := range u {
-			prod *= choose(d.T[i], u_i)
-		}
-
-		// Accumulate the permutations on this u path.
-		count += float64(prod)
-
-		if false {
-			// Print a table in the form of Klotz's
-			// "direct enumeration" example.
-			//
-			// Convert 2U = 2UQV' to UQt' used in Klotz
-			// examples.
-			UQt := float64(twoU)/2 + float64(d.N1*d.N1)/2
-			fmt.Printf("%+v %f %-2d\n", u, UQt, prod)
 		}
 	}
+
+	// Fill probabilities in memo table from low K values to high
+	// K values. This unwinds the recurrence relation.
+
+	// Start with K==2 base case.
+	//
+	// TODO: Later computations depend on these, but these don't
+	// depend on anything (including each other), so if K==2, we
+	// can skip the memo table altogether.
+	if K < 2 {
+		panic("K < 2")
+	}
+	N_2 := t[0] + t[1]
+	for pr_2i := range pr[2] {
+		x := (pr_2i.twoU - pr_2i.n1*(t[0]-pr_2i.n1)) / N_2
+		dist := HypergeometicDist{N: N_2, K: t[1], Draws: pr_2i.n1}
+		pr[2][pr_2i] = dist.CDF(float64(x))
+	}
+
+	// Derive probabilities for the rest of the memo table.
+	tsum = t[0] // always ∑ t[0:k-1]
+	for k := 3; k <= K; k++ {
+		tsum += t[k-2]
+		N_k := tsum + t[k-1]
+
+		// Compute pr[k] probabilities from pr[k-1] probabilities.
+		for pr_ki := range pr[k] {
+			prsum := 0.0
+			dist := HypergeometicDist{N: N_k, K: t[k-1], Draws: pr_ki.n1}
+			rkLow := maxint(0, pr_ki.n1-tsum)
+			rkHigh := minint(pr_ki.n1, t[k-1])
+			for rk := rkLow; rk <= rkHigh; rk++ {
+				twoU_k := pr_ki.twoU - rk*(a[k]-2*pr_ki.n1+rk)
+				n1_k := pr_ki.n1 - rk
+				twoUmin := twoUmin(k-1, n1_k, t, a)
+				twoUmax := twoUmax(k-1, n1_k, t, a)
+				if twoUmin <= twoU_k && twoU_k <= twoUmax {
+					pr1 := pr[k-1][ukey{n1: n1_k, twoU: twoU_k}]
+					prsum += pr1 * dist.PMF(float64(rk))
+				} else if twoUmax < twoU_k {
+					prsum += dist.PMF(float64(rk))
+				}
+			}
+			pr[k][pr_ki] = prsum
+		}
+	}
+
+	return pr
+}
+
+func twoUmin(K, n1 int, t, a []int) int {
+	twoU := -n1 * n1
+	n1_k := n1
+	for k := 1; k <= K; k++ {
+		twoU_k := minint(n1_k, t[k-1])
+		twoU += twoU_k * a[k]
+		n1_k -= twoU_k
+	}
+	return twoU
+}
+
+func twoUmax(K, n1 int, t, a []int) int {
+	twoU := -n1 * n1
+	n1_k := n1
+	for k := K; k > 0; k-- {
+		twoU_k := minint(n1_k, t[k-1])
+		twoU += twoU_k * a[k]
+		n1_k -= twoU_k
+	}
+	return twoU
 }
 
 func (d UDist) PMF(U float64) float64 {
@@ -234,7 +311,14 @@ func (d UDist) PMF(U float64) float64 {
 	}
 
 	if d.hasTies() {
-		return d.permCount(int(2*U), 0) / float64(choose(d.N1+d.N2, d.N1))
+		// makeUmemo computes the CDF directly. Take its
+		// difference to get the PMF.
+		p1, ok1 := makeUmemo(int(2*U)-1, d.N1, d.T)[len(d.T)][ukey{d.N1, int(2*U) - 1}]
+		p2, ok2 := makeUmemo(int(2*U), d.N1, d.T)[len(d.T)][ukey{d.N1, int(2 * U)}]
+		if !ok1 || !ok2 {
+			panic("makeUmemo did not return expected memoization table")
+		}
+		return p2 - p1
 	}
 
 	// There are no ties. Use the fast algorithm. U must be integral.
@@ -251,7 +335,12 @@ func (d UDist) CDF(U float64) float64 {
 	}
 
 	if d.hasTies() {
-		return d.permCount(int(2*U), -1) / float64(choose(d.N1+d.N2, d.N1))
+		// TODO: Minimize U?
+		p, ok := makeUmemo(int(2*U), d.N1, d.T)[len(d.T)][ukey{d.N1, int(2 * U)}]
+		if !ok {
+			panic("makeUmemo did not return expected memoization table")
+		}
+		return p
 	}
 
 	// There are no ties. Use the fast algorithm. U must be integral.

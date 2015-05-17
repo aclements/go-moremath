@@ -106,7 +106,7 @@ func TestUDistTies(t *testing.T) {
 			// Convert x from uQt' to uQv'.
 			U := x - float64(m*m)/2
 			P := dist.CDF(U)
-			if len(out) == 0 || out[len(out)-1][1] != P {
+			if len(out) == 0 || !aeq(out[len(out)-1][1], P) {
 				out = append(out, []float64{x, P})
 			}
 		}
@@ -118,17 +118,6 @@ func TestUDistTies(t *testing.T) {
 			out += fmt.Sprintf("%5.1f %f\n", row[0], row[1])
 		}
 		return out
-	}
-
-	// Check example in section 5 of Klotz (1966).
-	// UQV' = UQT' - m²/2 = 13.5.
-	//
-	// Note: To print the table in section 5, set the threshold to
-	// 0 and enable the debug print in UDist.permCount.
-	dist := UDist{N1: 4, N2: (2 + 4 + 3 + 1) - 4, T: []int{2, 4, 3, 1}}
-	c := dist.permCount(int(2*13.5), 1)
-	if c != 89 {
-		t.Errorf("For %+v, want P[UQV' >= 21.5 | T = t] = 89, got %f", dist, c)
 	}
 
 	// Compare against Table 1 from Klotz (1966).
@@ -221,7 +210,7 @@ func TestUDistTies(t *testing.T) {
 
 func BenchmarkUDistTies(b *testing.B) {
 	// Worst case: just one tie.
-	n := 9
+	n := 20
 	t := make([]int, 2*n-1)
 	for i := range t {
 		t[i] = 1
@@ -231,6 +220,12 @@ func BenchmarkUDistTies(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		UDist{N1: n, N2: n, T: t}.CDF(float64(n*n) / 2)
 	}
+}
+
+func XTestPrintUmemo(t *testing.T) {
+	// Reproduce table from Cheung, Klotz.
+	ties := []int{4, 5, 3, 4, 6}
+	printUmemo(makeUmemo(80, 10, ties), ties)
 }
 
 // udistRef computes the PMF and CDF of the U distribution for two
@@ -313,4 +308,15 @@ enumu:
 		cdf[i] += pmf[i]
 	}
 	return
+}
+
+// printUmemo prints the output of makeUmemo for debugging.
+func printUmemo(A []map[ukey]float64, t []int) {
+	fmt.Printf("K\tn1\t2*U\tpr\n")
+	for K := len(A) - 1; K >= 0; K-- {
+		for i, pr := range A[K] {
+			_, ref := udistRef(i.n1, t[:K])
+			fmt.Printf("%v\t%v\t%v\t%v\t%v\n", K, i.n1, i.twoU, pr, ref[i.twoU])
+		}
+	}
 }
