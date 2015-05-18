@@ -188,6 +188,35 @@ func TestUDistTies(t *testing.T) {
 	if !aeqTable(got, want) {
 		t.Errorf("Want:\n%sgot:\n%s", fmtTable(want), fmtTable(got))
 	}
+
+	// Check remaining tables from Klotz against the reference
+	// implementation.
+	checkRef := func(n1 int, tie []int) {
+		wantPMF1, wantCDF1 := udistRef(n1, tie)
+
+		dist := UDist{N1: n1, N2: sumint(tie) - n1, T: tie}
+		gotPMF, wantPMF := [][]float64{}, [][]float64{}
+		gotCDF, wantCDF := [][]float64{}, [][]float64{}
+		N := sumint(tie)
+		for U := 0.0; U <= float64(n1*(N-n1)); U += 0.5 {
+			gotPMF = append(gotPMF, []float64{U, dist.PMF(U)})
+			gotCDF = append(gotCDF, []float64{U, dist.CDF(U)})
+			wantPMF = append(wantPMF, []float64{U, wantPMF1[int(U*2)]})
+			wantCDF = append(wantCDF, []float64{U, wantCDF1[int(U*2)]})
+		}
+		if !aeqTable(wantPMF, gotPMF) {
+			t.Errorf("For PMF of n1=%v, t=%v, want:\n%sgot:\n%s", n1, tie, fmtTable(wantPMF), fmtTable(gotPMF))
+		}
+		if !aeqTable(wantCDF, gotCDF) {
+			t.Errorf("For CDF of n1=%v, t=%v, want:\n%sgot:\n%s", n1, tie, fmtTable(wantCDF), fmtTable(gotCDF))
+		}
+	}
+	checkRef(5, []int{1, 1, 2, 1, 1, 2, 1, 1})
+	checkRef(5, []int{1, 1, 2, 1, 1, 1, 2, 1})
+	checkRef(5, []int{1, 3, 1, 2, 1, 1, 1})
+	checkRef(8, []int{1, 2, 1, 1, 1, 1, 2, 2, 1, 2})
+	checkRef(12, []int{3, 3, 4, 3, 4, 5})
+	checkRef(10, []int{1, 2, 3, 4, 5, 6})
 }
 
 func BenchmarkUDistTies(b *testing.B) {
@@ -202,4 +231,86 @@ func BenchmarkUDistTies(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		UDist{N1: n, N2: n, T: t}.CDF(float64(n*n) / 2)
 	}
+}
+
+// udistRef computes the PMF and CDF of the U distribution for two
+// samples of sizes n1 and sum(t)-n1 with tie vector t. The returned
+// pmf and cdf are indexed by 2*U.
+//
+// This uses the "graphical method" of Klotz (1966). It is very slow
+// (Θ(∏ (t[i]+1)) = Ω(2^|t|)), but very correct, and hence useful as a
+// reference for testing faster implementations.
+func udistRef(n1 int, t []int) (pmf, cdf []float64) {
+	// Enumerate all u vectors for which 0 <= u_i <= t_i. Count
+	// the number of permutations of two samples of sizes n1 and
+	// sum(t)-n1 with tie vector t and accumulate these counts by
+	// their U statistics in count[2*U].
+	counts := make([]int, 1+2*n1*(sumint(t)-n1))
+
+	u := make([]int, len(t))
+	u[0] = -1 // Get enumeration started.
+enumu:
+	for {
+		// Compute the next u vector.
+		u[0]++
+		for i := 0; i < len(u) && u[i] > t[i]; i++ {
+			if i == len(u)-1 {
+				// All u vectors have been enumerated.
+				break enumu
+			}
+			// Carry.
+			u[i+1]++
+			u[i] = 0
+		}
+
+		// Is this a legal u vector?
+		if sumint(u) != n1 {
+			// Klotz (1966) has a method for directly
+			// enumerating legal u vectors, but the point
+			// of this is to be correct, not fast.
+			continue
+		}
+
+		// Compute 2*U statistic for this u vector.
+		twoU, vsum := 0, 0
+		for i, u_i := range u {
+			v_i := t[i] - u_i
+			// U = U + vsum*u_i + u_i*v_i/2
+			twoU += 2*vsum*u_i + u_i*v_i
+			vsum += v_i
+		}
+
+		// Compute Π choose(t_i, u_i). This is the number of
+		// ways of permuting the input sample under u.
+		prod := 1
+		for i, u_i := range u {
+			prod *= choose(t[i], u_i)
+		}
+
+		// Accumulate the permutations on this u path.
+		counts[twoU] += prod
+
+		if false {
+			// Print a table in the form of Klotz's
+			// "direct enumeration" example.
+			//
+			// Convert 2U = 2UQV' to UQt' used in Klotz
+			// examples.
+			UQt := float64(twoU)/2 + float64(n1*n1)/2
+			fmt.Printf("%+v %f %-2d\n", u, UQt, prod)
+		}
+	}
+
+	// Convert counts into probabilities for PMF and CDF.
+	pmf = make([]float64, len(counts))
+	cdf = make([]float64, len(counts))
+	total := choose(sumint(t), n1)
+	for i, count := range counts {
+		pmf[i] = float64(count) / float64(total)
+		if i > 0 {
+			cdf[i] = cdf[i-1]
+		}
+		cdf[i] += pmf[i]
+	}
+	return
 }
