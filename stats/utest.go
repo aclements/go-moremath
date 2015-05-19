@@ -86,11 +86,11 @@ var MannWhitneyExactLimit = 50
 // the exact U distribution will be used for the Mann-Whitney U-test
 // in the presence of ties.
 //
-// Computing this distribution is (currently) much more expensive than
-// computing the distribution without ties, so this is set much lower.
-// Computing this distribution for two 9 value samples takes a few
-// tens of milliseconds on a 2014 laptop.
-var MannWhitneyTiesExactLimit = 9
+// Computing this distribution is more expensive than computing the
+// distribution without ties, so this is set lower. Computing this
+// distribution for two 20 value samples takes about ten milliseconds
+// on a 2014 laptop.
+var MannWhitneyTiesExactLimit = 20
 
 // MannWhitneyUTest performs a Mann-Whitney U-test [1,2] of the null
 // hypothesis that two samples come from the same population against
