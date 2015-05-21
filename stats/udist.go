@@ -220,8 +220,7 @@ func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 			for rk := rkLow; rk <= rkHigh; rk++ {
 				twoU_k := A_kplus1.twoU - rk*(a[k+1]-2*A_kplus1.n1+rk)
 				n1_k := A_kplus1.n1 - rk
-				// TODO: Slice t instead of passing k?
-				if twoUmin(k, n1_k, t, a) <= twoU_k && twoU_k <= twoUmax(k, n1_k, t, a) {
+				if twoUmin(n1_k, t[:k], a) <= twoU_k && twoU_k <= twoUmax(n1_k, t[:k], a) {
 					key := ukey{n1: n1_k, twoU: twoU_k}
 					A[k][key] = 0
 				}
@@ -266,7 +265,7 @@ func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 				twoU_kminus1 := A_ki.twoU - rk*(a[k]-2*A_ki.n1+rk)
 				n1_kminus1 := A_ki.n1 - rk
 				x, ok := A[k-1][ukey{n1: n1_kminus1, twoU: twoU_kminus1}]
-				if !ok && twoUmax(k-1, n1_kminus1, t, a) < twoU_kminus1 {
+				if !ok && twoUmax(n1_kminus1, t[:k-1], a) < twoU_kminus1 {
 					x = float64(choose(tsum, n1_kminus1))
 				}
 				Asum += x * float64(choose(t[k-1], rk))
@@ -278,7 +277,8 @@ func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 	return A
 }
 
-func twoUmin(K, n1 int, t, a []int) int {
+func twoUmin(n1 int, t, a []int) int {
+	K := len(t)
 	twoU := -n1 * n1
 	n1_k := n1
 	for k := 1; k <= K; k++ {
@@ -289,7 +289,8 @@ func twoUmin(K, n1 int, t, a []int) int {
 	return twoU
 }
 
-func twoUmax(K, n1 int, t, a []int) int {
+func twoUmax(n1 int, t, a []int) int {
+	K := len(t)
 	twoU := -n1 * n1
 	n1_k := n1
 	for k := K; k > 0; k-- {
