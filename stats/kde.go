@@ -191,9 +191,9 @@ func (k KDE) FromSample(s Sample) Dist {
 	default:
 		panic(fmt.Sprint("unknown kernel", k))
 	case GaussianKernel:
-		kernel = Normal{0, h}
+		kernel = NormalDist{0, h}
 	case DeltaKernel:
-		kernel = Delta{0}
+		kernel = DeltaDist{0}
 	}
 
 	// Normalize boundaries

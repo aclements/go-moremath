@@ -6,24 +6,24 @@ package stats
 
 import "math"
 
-// Normal is a normal (Gaussian) distribution with mean Mu and
+// NormalDist is a normal (Gaussian) distribution with mean Mu and
 // standard deviation Sigma.
-type Normal struct {
+type NormalDist struct {
 	Mu, Sigma float64
 }
 
 // StdNormal is the standard normal distribution (Mu = 0, Sigma = 1)
-var StdNormal = Normal{0, 1}
+var StdNormal = NormalDist{0, 1}
 
 // 1/sqrt(2 * pi)
 const invSqrt2Pi = 0.39894228040143267793994605993438186847585863116493465766592583
 
-func (n Normal) PDF(x float64) float64 {
+func (n NormalDist) PDF(x float64) float64 {
 	z := x - n.Mu
 	return math.Exp(-z*z/(2*n.Sigma*n.Sigma)) * invSqrt2Pi / n.Sigma
 }
 
-func (n Normal) PDFEach(xs []float64) []float64 {
+func (n NormalDist) PDFEach(xs []float64) []float64 {
 	res := make([]float64, len(xs))
 	if n.Mu == 0 && n.Sigma == 1 {
 		// Standard normal fast path
@@ -41,11 +41,11 @@ func (n Normal) PDFEach(xs []float64) []float64 {
 	return res
 }
 
-func (n Normal) CDF(x float64) float64 {
+func (n NormalDist) CDF(x float64) float64 {
 	return (1 + math.Erf((x-n.Mu)/(n.Sigma*math.Sqrt2))) / 2
 }
 
-func (n Normal) CDFEach(xs []float64) []float64 {
+func (n NormalDist) CDFEach(xs []float64) []float64 {
 	res := make([]float64, len(xs))
 	a := 1 / (n.Sigma * math.Sqrt2)
 	for i, x := range xs {
@@ -54,15 +54,15 @@ func (n Normal) CDFEach(xs []float64) []float64 {
 	return res
 }
 
-func (n Normal) InvCDF(y float64) float64 {
+func (n NormalDist) InvCDF(y float64) float64 {
 	panic("not implemented")
 }
 
-func (n Normal) InvCDFEach(ys []float64) []float64 {
+func (n NormalDist) InvCDFEach(ys []float64) []float64 {
 	panic("not implemented")
 }
 
-func (n Normal) Bounds() (float64, float64) {
+func (n NormalDist) Bounds() (float64, float64) {
 	const stddevs = 3
 	return n.Mu - stddevs*n.Sigma, n.Mu + stddevs*n.Sigma
 }
