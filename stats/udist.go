@@ -168,6 +168,23 @@ func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 	// recent publication, so it's presumably faster (or perhaps
 	// just more general) than previous techniques, but I can't
 	// get my hands on the paper.
+	//
+	// TODO: ~40% of this function's time is spent in mapassign on
+	// the assignment lines in the two loops and another ~20% in
+	// map access and iteration. Improving map behavior or
+	// replacing the maps altogether with some other constant-time
+	// structure could double performance.
+	//
+	// TODO: The worst case for this function is when there are
+	// few ties. Yet the best case overall is when there are *no*
+	// ties. Can we get the best of both worlds? Use the fast
+	// algorithm for the most part when there are few ties and mix
+	// in the general algorithm just where we need it? That's
+	// certainly possible for sub-problems where t[:k] has no
+	// ties, but that doesn't help if t[0] has a tie but nothing
+	// else does. Is it possible to rearrange the ranks without
+	// messing up our computation of the U statistic for
+	// sub-problems?
 
 	K := len(t)
 
