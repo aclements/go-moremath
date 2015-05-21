@@ -13,6 +13,8 @@ import (
 var inf = math.Inf(1)
 var nan = math.NaN()
 
+// TODO: Put all errors in the same place and maybe unify them.
+
 var (
 	ErrSamplesEqual = errors.New("all samples are equal")
 )

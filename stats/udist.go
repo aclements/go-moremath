@@ -147,20 +147,19 @@ type ukey struct {
 	twoU int // 2*U statistic for this permutation
 }
 
-// This computes the CDF of the Mann-Whitney U distribution in the
-// presence of ties using the computation from Cheung, Ying Kuen;
-// Klotz, Jerome H. (1997). "The Mann Whitney Wilcoxon Distribution
-// Using Linked Lists". Statistica Sinica 7: 805-813, with much
-// guidance from appendix L of Klotz, A Computational Approach to
-// Statistics.
+// This computes the cumulative counts of the Mann-Whitney U
+// distribution in the presence of ties using the computation from
+// Cheung, Ying Kuen; Klotz, Jerome H. (1997). "The Mann Whitney
+// Wilcoxon Distribution Using Linked Lists". Statistica Sinica 7:
+// 805-813, with much guidance from appendix L of Klotz, A
+// Computational Approach to Statistics.
 //
-// makeUmemo constructs the memoization table for the cumulative
-// distribution of 2*U <= twoU, for sample sizes n1 and sum(t)-n1, and
-// tie vector t. The result is a table memo[K][ukey{n1, 2*U}]=pr,
-// where K is the number of ranks, n1 is the size of the first sample,
-// U is the U statistic. pr is the probability of a permutation of a
-// sample of size n1 in a ranking with tie vector t[:K] having a U
-// statistic <= U.
+// makeUmemo constructs a table memo[K][ukey{n1, 2*U}], where K is the
+// number of ranks (up to len(t)), n1 is the size of the first sample
+// (up to the n1 argument), and U is the U statistic (up to the
+// argument twoU/2). The value of an entry in the memo table is the
+// number of permutations of a sample of size n1 in a ranking with tie
+// vector t[:K] having a U statistic <= U.
 func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 	// Another candidate for a fast implementation is van de Wiel,
 	// "The split-up algorithm: a fast symbolic method for
@@ -180,8 +179,8 @@ func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 		a[k] = a[k-1] + t[k-2] + t[k-1]
 	}
 
-	// Create the memo table for the probability function. The pr
-	// slice is indexed by k (pr[0] is unused).
+	// Create the memo table for the counts function, A. The A
+	// slice is indexed by k (A[0] is unused).
 	//
 	// In "The Mann Whitney Distribution Using Linked Lists", they
 	// use linked lists (*gasp*) for this, but within each K it's
@@ -189,18 +188,14 @@ func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 	// map. The outer structure is a slice indexed by k because we
 	// need to find all memo entries with certain values of k.
 	//
-	// TODO: Compute the A function and normalize it to a
-	// probability at the end. This should be much cheaper to
-	// compute.
-	//
 	// TODO: The n1 and twoU values in the ukeys follow strict
 	// patterns. For each K value, the n1 values are every integer
 	// between two bounds. For each (K, n1) value, the twoU values
 	// are every integer multiple of a certain base between two
 	// bounds. It might be worth turning these into directly
 	// indexible slices.
-	pr := make([]map[ukey]float64, K+1)
-	pr[K] = map[ukey]float64{ukey{n1: n1, twoU: twoU}: 0}
+	A := make([]map[ukey]float64, K+1)
+	A[K] = map[ukey]float64{ukey{n1: n1, twoU: twoU}: 0}
 
 	// Compute memo table (k, n1, twoU) triples from high K values
 	// to low K values. This drives the recurrence relation
@@ -216,26 +211,26 @@ func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 	tsum := sumint(t) // always ∑ t[0:k]
 	for k := K - 1; k >= 2; k-- {
 		tsum -= t[k]
-		pr[k] = make(map[ukey]float64)
+		A[k] = make(map[ukey]float64)
 
-		// Construct pr[k] from pr[k+1].
-		for pr_kplus1 := range pr[k+1] {
-			rkLow := maxint(0, pr_kplus1.n1-tsum)
-			rkHigh := minint(pr_kplus1.n1, t[k])
+		// Construct A[k] from A[k+1].
+		for A_kplus1 := range A[k+1] {
+			rkLow := maxint(0, A_kplus1.n1-tsum)
+			rkHigh := minint(A_kplus1.n1, t[k])
 			for rk := rkLow; rk <= rkHigh; rk++ {
-				twoU_k := pr_kplus1.twoU - rk*(a[k+1]-2*pr_kplus1.n1+rk)
-				n1_k := pr_kplus1.n1 - rk
+				twoU_k := A_kplus1.twoU - rk*(a[k+1]-2*A_kplus1.n1+rk)
+				n1_k := A_kplus1.n1 - rk
 				// TODO: Slice t instead of passing k?
 				if twoUmin(k, n1_k, t, a) <= twoU_k && twoU_k <= twoUmax(k, n1_k, t, a) {
 					key := ukey{n1: n1_k, twoU: twoU_k}
-					pr[k][key] = 0
+					A[k][key] = 0
 				}
 			}
 		}
 	}
 
-	// Fill probabilities in memo table from low K values to high
-	// K values. This unwinds the recurrence relation.
+	// Fill counts in memo table from low K values to high K
+	// values. This unwinds the recurrence relation.
 
 	// Start with K==2 base case.
 	//
@@ -246,41 +241,50 @@ func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 		panic("K < 2")
 	}
 	N_2 := t[0] + t[1]
-	for pr_2i := range pr[2] {
-		x := (pr_2i.twoU - pr_2i.n1*(t[0]-pr_2i.n1)) / N_2
-		dist := HypergeometicDist{N: N_2, K: t[1], Draws: pr_2i.n1}
-		pr[2][pr_2i] = dist.CDF(float64(x))
+	for A_2i := range A[2] {
+		Asum := 0.0
+		r2Low := maxint(0, A_2i.n1-t[0])
+		r2High := (A_2i.twoU - A_2i.n1*(t[0]-A_2i.n1)) / N_2
+		for r2 := r2Low; r2 <= r2High; r2++ {
+			Asum += float64(choose(t[0], A_2i.n1-r2) *
+				choose(t[1], r2))
+		}
+		A[2][A_2i] = Asum
 	}
 
-	// Derive probabilities for the rest of the memo table.
+	// Derive counts for the rest of the memo table.
 	tsum = t[0] // always ∑ t[0:k-1]
 	for k := 3; k <= K; k++ {
 		tsum += t[k-2]
-		N_k := tsum + t[k-1]
 
-		// Compute pr[k] probabilities from pr[k-1] probabilities.
-		for pr_ki := range pr[k] {
-			prsum := 0.0
-			dist := HypergeometicDist{N: N_k, K: t[k-1], Draws: pr_ki.n1}
-			rkLow := maxint(0, pr_ki.n1-tsum)
-			rkHigh := minint(pr_ki.n1, t[k-1])
+		// Compute A[k] counts from A[k-1] counts.
+		for A_ki := range A[k] {
+			Asum := 0.0
+			rkLow := maxint(0, A_ki.n1-tsum)
+			rkHigh := minint(A_ki.n1, t[k-1])
 			for rk := rkLow; rk <= rkHigh; rk++ {
-				twoU_k := pr_ki.twoU - rk*(a[k]-2*pr_ki.n1+rk)
-				n1_k := pr_ki.n1 - rk
+				// TODO: This are for k-1, not k.
+				twoU_k := A_ki.twoU - rk*(a[k]-2*A_ki.n1+rk)
+				n1_k := A_ki.n1 - rk
+				// TODO: If it's in the memo table, we
+				// don't need to compute these.
+				// Otherwise, just compute twoUmax to
+				// see which extreme we need.
 				twoUmin := twoUmin(k-1, n1_k, t, a)
 				twoUmax := twoUmax(k-1, n1_k, t, a)
+				var x float64
 				if twoUmin <= twoU_k && twoU_k <= twoUmax {
-					pr1 := pr[k-1][ukey{n1: n1_k, twoU: twoU_k}]
-					prsum += pr1 * dist.PMF(float64(rk))
+					x = A[k-1][ukey{n1: n1_k, twoU: twoU_k}]
 				} else if twoUmax < twoU_k {
-					prsum += dist.PMF(float64(rk))
+					x = float64(choose(tsum, n1_k))
 				}
+				Asum += x * float64(choose(t[k-1], rk))
 			}
-			pr[k][pr_ki] = prsum
+			A[k][A_ki] = Asum
 		}
 	}
 
-	return pr
+	return A
 }
 
 func twoUmin(K, n1 int, t, a []int) int {
@@ -318,7 +322,7 @@ func (d UDist) PMF(U float64) float64 {
 		if !ok1 || !ok2 {
 			panic("makeUmemo did not return expected memoization table")
 		}
-		return p2 - p1
+		return (p2 - p1) / float64(choose(d.N1+d.N2, d.N1))
 	}
 
 	// There are no ties. Use the fast algorithm. U must be integral.
@@ -340,7 +344,7 @@ func (d UDist) CDF(U float64) float64 {
 		if !ok {
 			panic("makeUmemo did not return expected memoization table")
 		}
-		return p
+		return p / float64(choose(d.N1+d.N2, d.N1))
 	}
 
 	// There are no ties. Use the fast algorithm. U must be integral.
