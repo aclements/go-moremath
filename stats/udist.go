@@ -263,12 +263,11 @@ func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 			rkLow := maxint(0, A_ki.n1-tsum)
 			rkHigh := minint(A_ki.n1, t[k-1])
 			for rk := rkLow; rk <= rkHigh; rk++ {
-				// TODO: This are for k-1, not k.
-				twoU_k := A_ki.twoU - rk*(a[k]-2*A_ki.n1+rk)
-				n1_k := A_ki.n1 - rk
-				x, ok := A[k-1][ukey{n1: n1_k, twoU: twoU_k}]
-				if !ok && twoUmax(k-1, n1_k, t, a) < twoU_k {
-					x = float64(choose(tsum, n1_k))
+				twoU_kminus1 := A_ki.twoU - rk*(a[k]-2*A_ki.n1+rk)
+				n1_kminus1 := A_ki.n1 - rk
+				x, ok := A[k-1][ukey{n1: n1_kminus1, twoU: twoU_kminus1}]
+				if !ok && twoUmax(k-1, n1_kminus1, t, a) < twoU_kminus1 {
+					x = float64(choose(tsum, n1_kminus1))
 				}
 				Asum += x * float64(choose(t[k-1], rk))
 			}
