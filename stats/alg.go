@@ -54,8 +54,40 @@ func lchoose(n, k int) float64 {
 	return a - b - c
 }
 
+const smallFactLimit = 20 // 20! => 62 bits
+var smallFact [smallFactLimit + 1]int64
+
+func init() {
+	smallFact[0] = 1
+	fact := int64(1)
+	for n := int64(1); n <= smallFactLimit; n++ {
+		fact *= n
+		smallFact[n] = fact
+	}
+}
+
 // choose returns the binomial coefficient of n and k.
 func choose(n, k int) int {
+	if k == 0 || k == n {
+		return 1
+	}
+	if k < 0 || n < k {
+		return 0
+	}
+	if n <= smallFactLimit { // Implies k <= smallFactLimit
+		// It's faster to do several integer multiplications
+		// than it is to do an extra integer division.
+		// Remarkably, this is also faster than pre-computing
+		// Pascal's triangle (presumably because this is very
+		// cache efficient).
+		numer := int64(1)
+		for n1 := int64(n - (k - 1)); n1 <= int64(n); n1++ {
+			numer *= n1
+		}
+		denom := smallFact[k]
+		return int(numer / denom)
+	}
+
 	return int(math.Exp(lchoose(n, k)) + 0.5)
 }
 
