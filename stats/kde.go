@@ -186,7 +186,7 @@ func (k KDE) FromSample(s Sample) Dist {
 	h := bw.Bandwidth(s)
 
 	// Construct kernel
-	kernel := Dist(nil)
+	kernel := kdeKernel(nil)
 	switch k.Kernel {
 	default:
 		panic(fmt.Sprint("unknown kernel", k))
@@ -253,8 +253,13 @@ func (k KDE) FromHistogram(hist Histogram, ss *StreamStats) Dist {
 	// histogram?
 }
 
+type kdeKernel interface {
+	PDFEach(xs []float64) []float64
+	CDFEach(xs []float64) []float64
+}
+
 type kdeDist struct {
-	kernel      Dist
+	kernel      kdeKernel
 	xs, weights []float64
 	bm          BoundaryMethod
 	min, max    float64 // Support bounds
@@ -310,10 +315,6 @@ func (kde *kdeDist) PDF(x float64) float64 {
 	}
 }
 
-func (kde *kdeDist) PDFEach(xs []float64) []float64 {
-	return atEach(kde.PDF, xs)
-}
-
 func (cdf *kdeDist) CDF(x float64) float64 {
 	// Apply boundary
 	if x < cdf.min {
@@ -355,15 +356,7 @@ func (cdf *kdeDist) CDF(x float64) float64 {
 	}
 }
 
-func (cdf *kdeDist) CDFEach(xs []float64) []float64 {
-	return atEach(cdf.CDF, xs)
-}
-
 func (kde *kdeDist) InvCDF(x float64) float64 {
-	panic("not implemented")
-}
-
-func (kde *kdeDist) InvCDFEach(cs []float64) []float64 {
 	panic("not implemented")
 }
 

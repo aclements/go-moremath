@@ -52,14 +52,6 @@ func (d DeltaDist) InvCDF(y float64) float64 {
 	return d.T
 }
 
-func (d DeltaDist) InvCDFEach(ys []float64) []float64 {
-	res := make([]float64, len(ys))
-	for i, y := range ys {
-		res[i] = d.InvCDF(y)
-	}
-	return res
-}
-
 func (d DeltaDist) Bounds() (float64, float64) {
 	return d.T - 1, d.T + 1
 }

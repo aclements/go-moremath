@@ -10,23 +10,14 @@ type Dist interface {
 	// of this distribution at x.
 	PDF(x float64) float64
 
-	// PDFEach returns PDF(xs[i]) for each i.
-	PDFEach(xs []float64) []float64
-
 	// CDF returns the value of the cumulative distribution
 	// function for this distribution at x. This is the integral
 	// of the PDF from 0 to x.
 	CDF(x float64) float64
 
-	// CDFEach returns CDF(xs[i]) for each i.
-	CDFEach(xs []float64) []float64
-
 	// InvCDF returns the inverse of the CDF for y. That is,
 	// InvCDF(CDF(x)) = x. The value of y must be in [0, 1].
 	InvCDF(y float64) float64
-
-	// InvCDFEach returns InvCDF(ys[i]) for each i.
-	InvCDFEach(ys []float64) []float64
 
 	// Bounds returns reasonable bounds for this distribution's
 	// PDF and CDF. The total weight outside of these bounds

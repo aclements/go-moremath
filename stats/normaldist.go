@@ -58,10 +58,6 @@ func (n NormalDist) InvCDF(y float64) float64 {
 	panic("not implemented")
 }
 
-func (n NormalDist) InvCDFEach(ys []float64) []float64 {
-	panic("not implemented")
-}
-
 func (n NormalDist) Bounds() (float64, float64) {
 	const stddevs = 3
 	return n.Mu - stddevs*n.Sigma, n.Mu + stddevs*n.Sigma
