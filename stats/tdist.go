@@ -105,7 +105,7 @@ func (t TDist) PDFEach(xs []float64) []float64 {
 	factor := math.Exp(lgamma((t.V+1)/2)-lgamma(t.V/2)) /
 		math.Sqrt(t.V*math.Pi)
 	for i, x := range xs {
-		res[i] = factor / math.Pow(1+(x*x)/t.V, (t.V+1)/2)
+		res[i] = factor * math.Pow(1+(x*x)/t.V, (t.V+1)/2)
 	}
 	return res
 }
