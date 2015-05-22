@@ -24,10 +24,6 @@ type DistCommon interface {
 	// of (0, 1). Finally, CDF(-inf)==0 and CDF(inf)==1.
 	CDF(x float64) float64
 
-	// InvCDF returns the inverse of the CDF for y. That is,
-	// InvCDF(CDF(x)) = x. The value of y must be in [0, 1].
-	InvCDF(y float64) float64
-
 	// Bounds returns reasonable bounds for this distribution's
 	// PDF/PMF and CDF. The total weight outside of these bounds
 	// should be approximately 0.
@@ -88,3 +84,94 @@ type DiscreteDist interface {
 //
 // Doesn't have to be a method of Dist. Could be just a function that
 // takes a Dist and uses Bounds.
+
+// InvCDF returns the inverse CDF function of the given distribution
+// (also known as the quantile function or the percent point
+// function). This is a function f such that f(dist.CDF(x)) == x. If
+// dist.CDF is only weakly monotonic (that it, there are intervals
+// over which it is constant) and y > 0, f returns the smallest x that
+// satisfies this condition. In general, the inverse CDF is not
+// well-defined for y==0, but for convenience if y==0, f returns the
+// largest x that satisfies this condition. For distributions with
+// infinite support both the largest and smallest x are -Inf; however,
+// for distributions with finite support, this is the lower bound of
+// the support.
+//
+// If y < 0 or y > 1, f returns NaN.
+//
+// If dist implements InvCDF(float64) float64, this returns that
+// method. Otherwise, it returns a function that uses a generic
+// numerical method to construct the inverse CDF at y by finding x
+// such that dist.CDF(x) == y. This may have poor precision around
+// points of discontinuity, including f(0) and f(1).
+func InvCDF(dist DistCommon) func(y float64) (x float64) {
+	type invCDF interface {
+		InvCDF(float64) float64
+	}
+	if dist, ok := dist.(invCDF); ok {
+		return dist.InvCDF
+	}
+
+	// Otherwise, use a numerical algorithm.
+	//
+	// TODO: For discrete distributions, use the step size to
+	// inform this computation.
+	return func(y float64) (x float64) {
+		const almostInf = 1e100
+		const xtol = 1e-16
+
+		if y < 0 || y > 1 {
+			return nan
+		} else if y == 0 {
+			l, _ := dist.Bounds()
+			if dist.CDF(l) == 0 {
+				// Finite support
+				return l
+			} else {
+				// Infinite support
+				return -inf
+			}
+		} else if y == 1 {
+			_, h := dist.Bounds()
+			if dist.CDF(h) == 1 {
+				// Finite support
+				return h
+			} else {
+				// Infinite support
+				return inf
+			}
+		}
+
+		// Find loX, hiX for which cdf(loX) < y <= cdf(hiX).
+		var loX, loY, hiX, hiY float64
+		x1, y1 := 0.0, dist.CDF(0)
+		xdelta := 1.0
+		if y1 < y {
+			hiX, hiY = x1, y1
+			for hiY < y && hiX != inf {
+				loX, loY, hiX = hiX, hiY, hiX+xdelta
+				hiY = dist.CDF(hiX)
+				xdelta *= 2
+			}
+		} else {
+			loX, loY = x1, y1
+			for y <= loY && loX != -inf {
+				hiX, hiY, loX = loX, loY, loX-xdelta
+				loY = dist.CDF(loX)
+				xdelta *= 2
+			}
+		}
+		if loX == -inf {
+			return loX
+		} else if hiX == inf {
+			return hiX
+		}
+
+		// Use bisection on the interval to find the smallest
+		// x at which cdf(x) <= y.
+		_, x = bisectBool(func(x float64) bool {
+			return dist.CDF(x) < y
+		}, loX, hiX, xtol)
+		return
+	}
+}

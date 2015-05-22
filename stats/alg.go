@@ -139,6 +139,35 @@ func bisect(f func(float64) float64, low, high, tolerance float64) (float64, boo
 	}
 }
 
+// bisectBool implements the bisection method on a boolean function.
+// It returns x1, x2 ∈ [low, high], x1 < x2 such that f(x1) != f(x2)
+// and x2 - x1 <= xtol.
+//
+// If f(low) == f(high), it panics.
+func bisectBool(f func(float64) bool, low, high, xtol float64) (x1, x2 float64) {
+	flow, fhigh := f(low), f(high)
+	if flow == fhigh {
+		panic(fmt.Sprintf("root of f is not bracketed by [low, high]; f(%g)=%v f(%g)=%v", low, flow, high, fhigh))
+	}
+	for {
+		if high-low <= xtol {
+			return low, high
+		}
+		mid := (high + low) / 2
+		if mid == high || mid == low {
+			return low, high
+		}
+		fmid := f(mid)
+		if fmid == flow {
+			low = mid
+			flow = fmid
+		} else {
+			high = mid
+			fhigh = fmid
+		}
+	}
+}
+
 // series returns the sum of the series f(0), f(1), ...
 //
 // This implementation is fast, but subject to round-off error.

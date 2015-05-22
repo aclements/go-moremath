@@ -356,10 +356,6 @@ func (cdf *kdeDist) CDF(x float64) float64 {
 	}
 }
 
-func (kde *kdeDist) InvCDF(x float64) float64 {
-	panic("not implemented")
-}
-
 func (cdf *kdeDist) Bounds() (low float64, high float64) {
 	// TODO(austin) If this KDE came from a histogram, we'd better
 	// not sample at a significantly higher rate than the

@@ -6,6 +6,7 @@ package stats
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"testing"
@@ -26,16 +27,17 @@ func testFunc(t *testing.T, name string, f func(float64) float64, vals map[float
 	sort.Float64s(xs)
 
 	for _, x := range xs {
-		want := vals[x]
-		if got := f(x); !aeq(want, got) {
-			var label string
-			if strings.Contains(name, "%") {
-				label = fmt.Sprintf(name, x)
-			} else {
-				label = fmt.Sprintf("%s(%v)", name, x)
-			}
-			t.Errorf("want %s=%v, got %v", label, want, got)
+		want, got := vals[x], f(x)
+		if math.IsNaN(want) && math.IsNaN(got) || aeq(want, got) {
+			continue
 		}
+		var label string
+		if strings.Contains(name, "%") {
+			label = fmt.Sprintf(name, x)
+		} else {
+			label = fmt.Sprintf("%s(%v)", name, x)
+		}
+		t.Errorf("want %s=%v, got %v", label, want, got)
 	}
 }
 

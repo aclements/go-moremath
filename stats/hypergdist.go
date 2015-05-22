@@ -62,10 +62,6 @@ func (d HypergeometicDist) CDF(k float64) float64 {
 	return p
 }
 
-func (d HypergeometicDist) InvCDF(y float64) float64 {
-	panic("not implemented")
-}
-
 func (d HypergeometicDist) sum(k int) float64 {
 	const epsilon = 1e-14
 	sum, ak := 1.0, 1.0
