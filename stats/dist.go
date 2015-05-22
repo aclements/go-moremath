@@ -4,15 +4,24 @@
 
 package stats
 
-// A Dist is a continuous statistical distribution.
-type Dist interface {
-	// PDF returns the value of the probability density function
-	// of this distribution at x.
-	PDF(x float64) float64
-
-	// CDF returns the value of the cumulative distribution
-	// function for this distribution at x. This is the integral
-	// of the PDF from 0 to x.
+// A DistCommon is a statistical distribution. DistCommon is a base
+// interface provided by both continuous and discrete distributions.
+type DistCommon interface {
+	// CDF returns the cumulative probability Pr[X <= x].
+	//
+	// For continuous distributions, the CDF is the integral of
+	// the PDF from -inf to x.
+	//
+	// For discrete distributions, the CDF is the sum of the PMF
+	// at all defined points from -inf to x, inclusive. Note that
+	// the CDF of a discrete distribution is defined for the whole
+	// real line (unlike the PMF) but has discontinuities where
+	// the PMF is non-zero.
+	//
+	// The CDF is a monotonically increasing function and has a
+	// domain of all real numbers. If the distribution has bounded
+	// support, it has a range of [0, 1]; otherwise it has a range
+	// of (0, 1). Finally, CDF(-inf)==0 and CDF(inf)==1.
 	CDF(x float64) float64
 
 	// InvCDF returns the inverse of the CDF for y. That is,
@@ -20,9 +29,25 @@ type Dist interface {
 	InvCDF(y float64) float64
 
 	// Bounds returns reasonable bounds for this distribution's
-	// PDF and CDF. The total weight outside of these bounds
+	// PDF/PMF and CDF. The total weight outside of these bounds
 	// should be approximately 0.
+	//
+	// For a discrete distribution, both bounds are integer
+	// multiples of Step().
+	//
+	// If this distribution has finite support, it returns exact
+	// bounds l, h such that CDF(l')=0 for all l' < l and
+	// CDF(h')=1 for all h' >= h.
 	Bounds() (float64, float64)
+}
+
+// A Dist is a continuous statistical distribution.
+type Dist interface {
+	DistCommon
+
+	// PDF returns the value of the probability density function
+	// of this distribution at x.
+	PDF(x float64) float64
 }
 
 // A DiscreteDist is a discrete statistical distribution.
@@ -37,6 +62,8 @@ type Dist interface {
 // distributions, float64 can exactly represent all values between
 // ±2**52).
 type DiscreteDist interface {
+	DistCommon
+
 	// PMF returns the value of the probability mass function
 	// Pr[X = x'], where x' is x rounded down to the nearest
 	// defined point on the distribution.
@@ -47,26 +74,8 @@ type DiscreteDist interface {
 	// the same).
 	PMF(x float64) float64
 
-	// CDF returns the cumulative probability Pr[X <= x].
-	//
-	// Note that while continuous and discrete probability
-	// distributions differ in how they represent the probability
-	// function, both have continuous cumulative distribution
-	// functions. However, discrete distributions generally have
-	// discontinuous CDFs.
-	CDF(x float64) float64
-
 	// Step returns s, where the distribution is defined for sℕ.
 	Step() float64
-
-	// Bounds returns reasonable bounds for this distribution's
-	// PMF and CDF. Both bounds must be integer multiples of
-	// Step().
-	//
-	// If this distribution has finite support, this must return
-	// exact bounds l, h such that PMF(l')=0 for all l' < l and
-	// PDF(h')=0 for all h' >= h+Step().
-	Bounds() (float64, float64)
 }
 
 // TODO: Add a Support method for finite support distributions? Or
