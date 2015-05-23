@@ -42,14 +42,14 @@ func (n NormalDist) PDFEach(xs []float64) []float64 {
 }
 
 func (n NormalDist) CDF(x float64) float64 {
-	return (1 + math.Erf((x-n.Mu)/(n.Sigma*math.Sqrt2))) / 2
+	return math.Erfc(-(x-n.Mu)/(n.Sigma*math.Sqrt2)) / 2
 }
 
 func (n NormalDist) CDFEach(xs []float64) []float64 {
 	res := make([]float64, len(xs))
 	a := 1 / (n.Sigma * math.Sqrt2)
 	for i, x := range xs {
-		res[i] = (1 + math.Erf((x-n.Mu)*a)) / 2
+		res[i] = math.Erfc(-(x-n.Mu)*a) / 2
 	}
 	return res
 }
