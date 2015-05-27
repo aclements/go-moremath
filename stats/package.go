@@ -2,7 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// stats is a grab bag of statistical routines.
+// Package stats implements several statistical distributions,
+// hypothesis tests, and functions for descriptive statistics.
+//
+// Currently stats is fairly small, but for what it does implement, it
+// focuses on high quality, fast implementations with good, idiomatic
+// Go APIs.
 package stats // import "github.com/aclements/go-moremath/stats"
 
 import (
