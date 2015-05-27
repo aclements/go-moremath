@@ -4,6 +4,8 @@
 
 package stats
 
+import "math/rand"
+
 // A DistCommon is a statistical distribution. DistCommon is a base
 // interface provided by both continuous and discrete distributions.
 type DistCommon interface {
@@ -173,5 +175,36 @@ func InvCDF(dist DistCommon) func(y float64) (x float64) {
 			return dist.CDF(x) < y
 		}, loX, hiX, xtol)
 		return
+	}
+}
+
+// Rand returns a random number generator that draws from the given
+// distribution. The returned generator takes an optional source of
+// randomness; if this is nil, it uses the default global source.
+//
+// If dist implements Rand(*rand.Rand) float64, Rand returns that
+// method. Otherwise, it returns a generic generator based on dist's
+// inverse CDF (which may in turn use an efficient implementation or a
+// generic numerical implementation; see InvCDF).
+func Rand(dist DistCommon) func(*rand.Rand) float64 {
+	type distRand interface {
+		Rand(*rand.Rand) float64
+	}
+	if dist, ok := dist.(distRand); ok {
+		return dist.Rand
+	}
+
+	// Otherwise, use a generic algorithm.
+	inv := InvCDF(dist)
+	return func(r *rand.Rand) float64 {
+		var y float64
+		for y == 0 {
+			if r == nil {
+				y = rand.Float64()
+			} else {
+				y = r.Float64()
+			}
+		}
+		return inv(y)
 	}
 }

@@ -4,7 +4,10 @@
 
 package stats
 
-import "math"
+import (
+	"math"
+	"math/rand"
+)
 
 // NormalDist is a normal (Gaussian) distribution with mean Mu and
 // standard deviation Sigma.
@@ -119,6 +122,16 @@ func (n NormalDist) InvCDF(p float64) (x float64) {
 	x = x - u/(1+x*u/2)
 
 	// Adjust from standard normal.
+	return x*n.Sigma + n.Mu
+}
+
+func (n NormalDist) Rand(r *rand.Rand) float64 {
+	var x float64
+	if r == nil {
+		x = rand.NormFloat64()
+	} else {
+		x = r.NormFloat64()
+	}
 	return x*n.Sigma + n.Mu
 }
 
