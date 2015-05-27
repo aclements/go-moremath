@@ -5,37 +5,27 @@
 package stats
 
 import (
+	"fmt"
 	"math"
 	"testing"
 )
 
 func TestNormalDist(t *testing.T) {
 	d := StdNormal
-	if e, g := 1/math.Sqrt(2*math.Pi), d.PDF(0); !aeq(e, g) {
-		t.Errorf("bad value at 0: expected %g, got %g", e, g)
-	}
-	if e, g := 1/math.Sqrt(2*math.Pi)*math.Exp(-0.5), d.PDF(1); !aeq(e, g) {
-		t.Errorf("bad value at 1: expected %g, got %g", e, g)
-	}
-	if e, g := 1/math.Sqrt(2*math.Pi)*math.Exp(-0.5), d.PDF(-1); !aeq(e, g) {
-		t.Errorf("bad value at -1: expected %g, got %g", e, g)
-	}
-	if e, g := 0.0, d.PDF(-10000); !aeq(e, g) {
-		t.Errorf("bad value at low tail: expected %g, got %g", e, g)
-	}
-	if e, g := 0.0, d.PDF(10000); !aeq(e, g) {
-		t.Errorf("bad value at high tail: expected %g, got %g", e, g)
-	}
 
-	if e, g := 0.5, d.CDF(0); !aeq(e, g) {
-		t.Errorf("bad value at 0: expected %g, got %g", e, g)
-	}
-	if e, g := 0.0, d.CDF(-10000); !aeq(e, g) {
-		t.Errorf("bad value at low tail: expected %g, got %g", e, g)
-	}
-	if e, g := 1.0, d.CDF(10000); !aeq(e, g) {
-		t.Errorf("bad value at high tail: expected %g, got %g", e, g)
-	}
+	testFunc(t, fmt.Sprintf("%+v.PDF", d), d.PDF, map[float64]float64{
+		-10000: 0, // approx
+		-1:     1 / math.Sqrt(2*math.Pi) * math.Exp(-0.5),
+		0:      1 / math.Sqrt(2*math.Pi),
+		1:      1 / math.Sqrt(2*math.Pi) * math.Exp(-0.5),
+		10000:  0, // approx
+	})
+
+	testFunc(t, fmt.Sprintf("%+v.CDF", d), d.CDF, map[float64]float64{
+		-10000: 0, // approx
+		0:      0.5,
+		10000:  1, // approx
+	})
 
 	d2 := NormalDist{Mu: 2, Sigma: 5}
 	testInvCDF(t, d, false)
