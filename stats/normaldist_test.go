@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestStdNormal(t *testing.T) {
+func TestNormalDist(t *testing.T) {
 	d := StdNormal
 	if e, g := 1/math.Sqrt(2*math.Pi), d.PDF(0); !aeq(e, g) {
 		t.Errorf("bad value at 0: expected %g, got %g", e, g)
@@ -26,10 +26,7 @@ func TestStdNormal(t *testing.T) {
 	if e, g := 0.0, d.PDF(10000); !aeq(e, g) {
 		t.Errorf("bad value at high tail: expected %g, got %g", e, g)
 	}
-}
 
-func TestStdNormalIntegral(t *testing.T) {
-	d := StdNormal
 	if e, g := 0.5, d.CDF(0); !aeq(e, g) {
 		t.Errorf("bad value at 0: expected %g, got %g", e, g)
 	}
@@ -39,4 +36,8 @@ func TestStdNormalIntegral(t *testing.T) {
 	if e, g := 1.0, d.CDF(10000); !aeq(e, g) {
 		t.Errorf("bad value at high tail: expected %g, got %g", e, g)
 	}
+
+	d2 := NormalDist{Mu: 2, Sigma: 5}
+	testInvCDF(t, d, false)
+	testInvCDF(t, d2, false)
 }
