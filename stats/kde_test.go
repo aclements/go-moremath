@@ -6,10 +6,10 @@ package stats
 
 import "testing"
 
-func TestOneSample(t *testing.T) {
+func TestKDEOneSample(t *testing.T) {
 	// Unweighted, fixed bandwidth
 	x := float64(5)
-	kde := KDE{Bandwidth: 1}.From(Sample{Xs: []float64{x}})
+	kde := KDE{Sample: Sample{Xs: []float64{x}}, Bandwidth: 1}
 	if e, g := StdNormal.PDF(0), kde.PDF(x); !aeq(e, g) {
 		t.Errorf("bad PDF value at sample: expected %g, got %g", e, g)
 	}
@@ -39,8 +39,8 @@ func TestOneSample(t *testing.T) {
 	}
 }
 
-func TestTwoSamples(t *testing.T) {
-	kde := KDE{Bandwidth: 2}.From(Sample{Xs: []float64{1, 3}})
+func TestKDETwoSamples(t *testing.T) {
+	kde := KDE{Sample: Sample{Xs: []float64{1, 3}}, Bandwidth: 2}
 	testFunc(t, "PDF", kde.PDF, map[float64]float64{
 		0: 0.120395730,
 		1: 0.160228251,

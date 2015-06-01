@@ -9,14 +9,12 @@ import (
 	"math"
 )
 
-// TODO: Consider moving this to stats/kde.  Then I could write things
-// like kde.Setup{Bandwidth: kde.Scott}.FromSample(sample)
-
-// KDE represents options for constructing a kernel density estimate.
+// A KDE is a distribution that estimates the underlying distribution
+// of a Sample using kernel density estimation.
 //
 // Kernel density estimation is a method for constructing an estimate
 // ƒ̂(x) of a unknown distribution ƒ(x) given a sample from that
-// distribution.  Unlike many techniques, kernel density estimation is
+// distribution. Unlike many techniques, kernel density estimation is
 // non-parametric: in general, it doesn't assume any particular true
 // distribution (note, however, that the resulting distribution
 // depends deeply on the selected bandwidth, and many bandwidth
@@ -26,12 +24,12 @@ import (
 // is a smooth probability estimate and does not require choosing a
 // bin size and discretizing the data.
 //
-// To construct a kernel density estimate, create an instance of KDE
-// and then use the From method to provide data.
-//
-// The default (zero) value of KDE is a reasonable default
-// configuration.
+// Sample is the only required field. All others have reasonable
+// defaults.
 type KDE struct {
+	// Sample is the data sample underlying this KDE.
+	Sample Sample
+
 	// Kernel is the kernel to use for the KDE.
 	Kernel KDEKernel
 
@@ -126,105 +124,82 @@ const (
 	// simple and fast technique, but enforces that ƒ̂ᵣ'(0)=0, so
 	// it may not be applicable to all distributions.
 	BoundaryReflect KDEBoundaryMethod = iota
-
-	// boundaryNone represents no boundary correction.
-	//
-	// This is used internally when the bounds are -/+inf.
-	boundaryNone
 )
-
-// From returns the probability density function of the kernel density
-// estimate for the sample s.
-func (k KDE) From(s Sample) Dist {
-	if s.Weights != nil && len(s.Xs) != len(s.Weights) {
-		panic("len(xs) != len(weights)")
-	}
-
-	// Compute bandwidth
-	h := k.Bandwidth
-	if h == 0 {
-		h = BandwidthScott(s)
-	}
-
-	// Construct kernel
-	kernel := kdeKernel(nil)
-	switch k.Kernel {
-	default:
-		panic(fmt.Sprint("unknown kernel", k))
-	case GaussianKernel:
-		kernel = NormalDist{0, h}
-	case DeltaKernel:
-		kernel = DeltaDist{0}
-	}
-
-	// Normalize boundaries
-	bm := k.BoundaryMethod
-	min, max := k.BoundaryMin, k.BoundaryMax
-	if min == 0 && max == 0 {
-		min, max = math.Inf(-1), math.Inf(1)
-	}
-	if math.IsInf(min, -1) && math.IsInf(max, 1) {
-		bm = boundaryNone
-	}
-
-	return &kdeDist{kernel, s.Xs, s.Weights, bm, min, max}
-}
-
-// TODO: For KDEs of histograms, make histograms able to create a
-// weighted Sample and simply require the caller to provide a
-// good bandwidth from a StreamStats.
 
 type kdeKernel interface {
 	PDFEach(xs []float64) []float64
 	CDFEach(xs []float64) []float64
 }
 
-type kdeDist struct {
-	kernel      kdeKernel
-	xs, weights []float64
-	bm          KDEBoundaryMethod
-	min, max    float64 // Support bounds
+func (k *KDE) prepare() (kdeKernel, bool) {
+	// Compute bandwidth.
+	if k.Bandwidth == 0 {
+		k.Bandwidth = BandwidthScott(k.Sample)
+	}
+
+	// Construct kernel.
+	kernel := kdeKernel(nil)
+	switch k.Kernel {
+	default:
+		panic(fmt.Sprint("unknown kernel", k))
+	case GaussianKernel:
+		kernel = NormalDist{0, k.Bandwidth}
+	case DeltaKernel:
+		kernel = DeltaDist{0}
+	}
+
+	// Use boundary correction?
+	bc := k.BoundaryMin != 0 || k.BoundaryMax != 0
+
+	return kernel, bc
 }
 
-// normalizedXs returns x - kde.xs.  Evaluating kernels shifted by
-// kde.xs all at x is equivalent to evaluating one unshifted kernel at
-// x - kde.xs.
-func (kde *kdeDist) normalizedXs(x float64) []float64 {
-	txs := make([]float64, len(kde.xs))
-	for i, xi := range kde.xs {
+// TODO: For KDEs of histograms, make histograms able to create a
+// weighted Sample and simply require the caller to provide a
+// good bandwidth from a StreamStats.
+
+// normalizedXs returns x - kde.Sample.Xs. Evaluating kernels shifted
+// by kde.Sample.Xs all at x is equivalent to evaluating one unshifted
+// kernel at x - kde.Sample.Xs.
+func (kde *KDE) normalizedXs(x float64) []float64 {
+	txs := make([]float64, len(kde.Sample.Xs))
+	for i, xi := range kde.Sample.Xs {
 		txs[i] = x - xi
 	}
 	return txs
 }
 
-func (kde *kdeDist) PDF(x float64) float64 {
+func (kde *KDE) PDF(x float64) float64 {
+	kernel, bc := kde.prepare()
+
 	// Apply boundary
-	if x < kde.min || x >= kde.max {
+	if bc && (x < kde.BoundaryMin || x >= kde.BoundaryMax) {
 		return 0
 	}
 
 	y := func(x float64) float64 {
 		// Shift kernel to each of kde.xs and evaluate at x
-		ys := kde.kernel.PDFEach(kde.normalizedXs(x))
+		ys := kernel.PDFEach(kde.normalizedXs(x))
 
 		// Kernel samples are weighted according to the weights of xs
-		wys := Sample{Xs: ys, Weights: kde.weights}
+		wys := Sample{Xs: ys, Weights: kde.Sample.Weights}
 
 		return wys.Sum() / wys.Weight()
 	}
-	switch kde.bm {
+	if !bc {
+		return y(x)
+	}
+	switch kde.BoundaryMethod {
 	default:
 		panic("unknown boundary correction method")
-	case boundaryNone:
-		return y(x)
 	case BoundaryReflect:
-		if math.IsInf(kde.max, 1) {
-			return y(x) + y(2*kde.min-x)
-		} else if math.IsInf(kde.min, -1) {
-			return y(x) + y(2*kde.max-x)
+		if math.IsInf(kde.BoundaryMax, 1) {
+			return y(x) + y(2*kde.BoundaryMin-x)
+		} else if math.IsInf(kde.BoundaryMin, -1) {
+			return y(x) + y(2*kde.BoundaryMax-x)
 		} else {
-			d := 2 * (kde.max - kde.min)
-			w := 2 * (x - kde.min)
+			d := 2 * (kde.BoundaryMax - kde.BoundaryMin)
+			w := 2 * (x - kde.BoundaryMin)
 			return series(func(n float64) float64 {
 				// Points >= x
 				return y(x+n*d) + y(x+n*d-w)
@@ -236,36 +211,41 @@ func (kde *kdeDist) PDF(x float64) float64 {
 	}
 }
 
-func (cdf *kdeDist) CDF(x float64) float64 {
+func (kde *KDE) CDF(x float64) float64 {
+	kernel, bc := kde.prepare()
+
 	// Apply boundary
-	if x < cdf.min {
-		return 0
-	} else if x >= cdf.max {
-		return 1
+	if bc {
+		if x < kde.BoundaryMin {
+			return 0
+		} else if x >= kde.BoundaryMax {
+			return 1
+		}
 	}
 
 	y := func(x float64) float64 {
 		// Shift kernel integral to each of cdf.xs and evaluate at x
-		ys := cdf.kernel.CDFEach(cdf.normalizedXs(x))
+		ys := kernel.CDFEach(kde.normalizedXs(x))
 
 		// Kernel samples are weighted according to the weights of xs
-		wys := Sample{Xs: ys, Weights: cdf.weights}
+		wys := Sample{Xs: ys, Weights: kde.Sample.Weights}
 
 		return wys.Sum() / wys.Weight()
 	}
-	switch cdf.bm {
+	if !bc {
+		return y(x)
+	}
+	switch kde.BoundaryMethod {
 	default:
 		panic("unknown boundary correction method")
-	case boundaryNone:
-		return y(x)
 	case BoundaryReflect:
-		if math.IsInf(cdf.max, 1) {
-			return y(x) - y(2*cdf.min-x)
-		} else if math.IsInf(cdf.min, -1) {
-			return y(x) + (1 - y(2*cdf.max-x))
+		if math.IsInf(kde.BoundaryMax, 1) {
+			return y(x) - y(2*kde.BoundaryMin-x)
+		} else if math.IsInf(kde.BoundaryMin, -1) {
+			return y(x) + (1 - y(2*kde.BoundaryMax-x))
 		} else {
-			d := 2 * (cdf.max - cdf.min)
-			w := 2 * (x - cdf.min)
+			d := 2 * (kde.BoundaryMax - kde.BoundaryMin)
+			w := 2 * (x - kde.BoundaryMin)
 			return series(func(n float64) float64 {
 				// Windows >= x-w
 				return y(x+n*d) - y(x+n*d-w)
@@ -277,7 +257,9 @@ func (cdf *kdeDist) CDF(x float64) float64 {
 	}
 }
 
-func (cdf *kdeDist) Bounds() (low float64, high float64) {
+func (kde *KDE) Bounds() (low float64, high float64) {
+	_, bc := kde.prepare()
+
 	// TODO(austin) If this KDE came from a histogram, we'd better
 	// not sample at a significantly higher rate than the
 	// histogram.  Maybe we want to just return the bounds of the
@@ -289,7 +271,7 @@ func (cdf *kdeDist) Bounds() (low float64, high float64) {
 	// pass an axis derived from the bounds of the original data.
 
 	// Use the lowest and highest samples as starting points
-	lowX, highX := Sample{Xs: cdf.xs, Weights: cdf.weights}.Bounds()
+	lowX, highX := kde.Sample.Bounds()
 	if lowX == highX {
 		lowX -= 1
 		highX += 1
@@ -304,23 +286,26 @@ func (cdf *kdeDist) Bounds() (low float64, high float64) {
 		highY     = 0.995
 		tolerance = 0.001
 	)
-	for cdf.CDF(lowX) > lowY {
+	for kde.CDF(lowX) > lowY {
 		lowX -= highX - lowX
 	}
-	for cdf.CDF(highX) < highY {
+	for kde.CDF(highX) < highY {
 		highX += highX - lowX
 	}
 	// Explicitly accept discontinuities, since we may be using a
 	// discontiguous kernel.
-	low, _ = bisect(func(x float64) float64 { return cdf.CDF(x) - lowY }, lowX, highX, tolerance)
-	high, _ = bisect(func(x float64) float64 { return cdf.CDF(x) - highY }, lowX, highX, tolerance)
+	low, _ = bisect(func(x float64) float64 { return kde.CDF(x) - lowY }, lowX, highX, tolerance)
+	high, _ = bisect(func(x float64) float64 { return kde.CDF(x) - highY }, lowX, highX, tolerance)
 
 	// Expand width by 20% to give some margins
 	width := high - low
 	low, high = low-0.1*width, high+0.1*width
 
 	// Limit to bounds
-	low, high = math.Max(low, cdf.min), math.Min(high, cdf.max)
+	if bc {
+		low = math.Max(low, kde.BoundaryMin)
+		high = math.Min(high, kde.BoundaryMax)
+	}
 
 	return
 }
