@@ -6,10 +6,7 @@ package stats
 
 // Miscellaneous helper algorithms
 
-import (
-	"fmt"
-	"math"
-)
+import "fmt"
 
 // sign returns the sign of x: -1 if x < 0, 0 if x == 0, 1 if x > 0.
 // If x is NaN, it returns NaN.
@@ -44,51 +41,6 @@ func sumint(xs []int) int {
 		sum += x
 	}
 	return sum
-}
-
-// lchoose returns math.Log(choose(n, k)).
-func lchoose(n, k int) float64 {
-	a, _ := math.Lgamma(float64(n + 1))
-	b, _ := math.Lgamma(float64(k + 1))
-	c, _ := math.Lgamma(float64(n - k + 1))
-	return a - b - c
-}
-
-const smallFactLimit = 20 // 20! => 62 bits
-var smallFact [smallFactLimit + 1]int64
-
-func init() {
-	smallFact[0] = 1
-	fact := int64(1)
-	for n := int64(1); n <= smallFactLimit; n++ {
-		fact *= n
-		smallFact[n] = fact
-	}
-}
-
-// choose returns the binomial coefficient of n and k.
-func choose(n, k int) int {
-	if k == 0 || k == n {
-		return 1
-	}
-	if k < 0 || n < k {
-		return 0
-	}
-	if n <= smallFactLimit { // Implies k <= smallFactLimit
-		// It's faster to do several integer multiplications
-		// than it is to do an extra integer division.
-		// Remarkably, this is also faster than pre-computing
-		// Pascal's triangle (presumably because this is very
-		// cache efficient).
-		numer := int64(1)
-		for n1 := int64(n - (k - 1)); n1 <= int64(n); n1++ {
-			numer *= n1
-		}
-		denom := smallFact[k]
-		return int(numer / denom)
-	}
-
-	return int(math.Exp(lchoose(n, k)) + 0.5)
 }
 
 // atEach returns f(x) for each x in xs.

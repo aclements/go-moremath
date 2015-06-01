@@ -4,7 +4,11 @@
 
 package stats
 
-import "math"
+import (
+	"math"
+
+	"github.com/aclements/go-moremath/mathx"
+)
 
 // A UDist is the discrete probability distribution of the
 // Mann-Whitney U statistic for a pair of samples of sizes N1 and N2.
@@ -262,8 +266,8 @@ func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 		r2Low := maxint(0, A_2i.n1-t[0])
 		r2High := (A_2i.twoU - A_2i.n1*(t[0]-A_2i.n1)) / N_2
 		for r2 := r2Low; r2 <= r2High; r2++ {
-			Asum += float64(choose(t[0], A_2i.n1-r2) *
-				choose(t[1], r2))
+			Asum += mathx.Choose(t[0], A_2i.n1-r2) *
+				mathx.Choose(t[1], r2)
 		}
 		A[2][A_2i] = Asum
 	}
@@ -283,9 +287,9 @@ func makeUmemo(twoU, n1 int, t []int) []map[ukey]float64 {
 				n1_kminus1 := A_ki.n1 - rk
 				x, ok := A[k-1][ukey{n1: n1_kminus1, twoU: twoU_kminus1}]
 				if !ok && twoUmax(n1_kminus1, t[:k-1], a) < twoU_kminus1 {
-					x = float64(choose(tsum, n1_kminus1))
+					x = mathx.Choose(tsum, n1_kminus1)
 				}
-				Asum += x * float64(choose(t[k-1], rk))
+				Asum += x * mathx.Choose(t[k-1], rk)
 			}
 			A[k][A_ki] = Asum
 		}
@@ -331,7 +335,7 @@ func (d UDist) PMF(U float64) float64 {
 		if !ok1 || !ok2 {
 			panic("makeUmemo did not return expected memoization table")
 		}
-		return (p2 - p1) / float64(choose(d.N1+d.N2, d.N1))
+		return (p2 - p1) / mathx.Choose(d.N1+d.N2, d.N1)
 	}
 
 	// There are no ties. Use the fast algorithm. U must be integral.
@@ -353,7 +357,7 @@ func (d UDist) CDF(U float64) float64 {
 		if !ok {
 			panic("makeUmemo did not return expected memoization table")
 		}
-		return p / float64(choose(d.N1+d.N2, d.N1))
+		return p / mathx.Choose(d.N1+d.N2, d.N1)
 	}
 
 	// There are no ties. Use the fast algorithm. U must be integral.
