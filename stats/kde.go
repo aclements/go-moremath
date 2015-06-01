@@ -102,11 +102,18 @@ type KDEKernel int
 //go:generate stringer -type=KDEKernel
 
 const (
-	GaussianKernel KDEKernel = iota
+	// An EpanechnikovKernel is a smooth kernel with bounded
+	// support. As a result, the KDE will also have bounded
+	// support. It is "optimal" in the sense that it minimizes the
+	// asymptotic mean integrated squared error (AMISE).
+	EpanechnikovKernel KDEKernel = iota
 
-	// DeltaKernel is a Dirac delta function.  The PDF of such a
+	// A GaussianKernel is a Gaussian (normal) kernel.
+	GaussianKernel
+
+	// A DeltaKernel is a Dirac delta function. The PDF of such a
 	// KDE is not well-defined, but the CDF will represent each
-	// sample as an instantaneous increase.  This kernel ignores
+	// sample as an instantaneous increase. This kernel ignores
 	// bandwidth and never requires boundary correction.
 	DeltaKernel
 )
@@ -142,6 +149,8 @@ func (k *KDE) prepare() (kdeKernel, bool) {
 	switch k.Kernel {
 	default:
 		panic(fmt.Sprint("unknown kernel", k))
+	case EpanechnikovKernel:
+		kernel = epanechnikovKernel{k.Bandwidth}
 	case GaussianKernel:
 		kernel = NormalDist{0, k.Bandwidth}
 	case DeltaKernel:
@@ -308,4 +317,34 @@ func (kde *KDE) Bounds() (low float64, high float64) {
 	}
 
 	return
+}
+
+type epanechnikovKernel struct {
+	h float64
+}
+
+func (d epanechnikovKernel) PDFEach(xs []float64) []float64 {
+	ys := make([]float64, len(xs))
+	a := 0.75 / d.h
+	invhh := 1 / (d.h * d.h)
+	for i, x := range xs {
+		if -d.h < x && x < d.h {
+			ys[i] = a * (1 - x*x*invhh)
+		}
+	}
+	return ys
+}
+
+func (d epanechnikovKernel) CDFEach(xs []float64) []float64 {
+	ys := make([]float64, len(xs))
+	invh := 1 / d.h
+	for i, x := range xs {
+		if x > d.h {
+			ys[i] = 1
+		} else if x > -d.h {
+			u := x * invh
+			ys[i] = 0.25 * (2 + 3*u - u*u*u)
+		}
+	}
+	return ys
 }
