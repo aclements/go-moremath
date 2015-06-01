@@ -5,3 +5,7 @@
 // Package mathx implements special functions not provided by the
 // standard math package.
 package mathx // import "github.com/aclements/go-moremath/mathx"
+
+import "math"
+
+var nan = math.NaN()

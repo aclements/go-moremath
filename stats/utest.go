@@ -7,6 +7,8 @@ package stats
 import (
 	"math"
 	"sort"
+
+	"github.com/aclements/go-moremath/mathx"
 )
 
 // A LocationHypothesis specifies the alternative hypothesis of a
@@ -209,7 +211,7 @@ func MannWhitneyUTest(x1, x2 []float64, alt LocationHypothesis) (*MannWhitneyUTe
 		// Perform continuity correction.
 		switch alt {
 		case LocationDiffers:
-			numer -= sign(numer) * 0.5
+			numer -= mathx.Sign(numer) * 0.5
 		case LocationLess:
 			numer += 0.5
 		case LocationGreater:

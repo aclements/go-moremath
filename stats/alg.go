@@ -6,20 +6,11 @@ package stats
 
 // Miscellaneous helper algorithms
 
-import "fmt"
+import (
+	"fmt"
 
-// sign returns the sign of x: -1 if x < 0, 0 if x == 0, 1 if x > 0.
-// If x is NaN, it returns NaN.
-func sign(x float64) float64 {
-	if x == 0 {
-		return 0
-	} else if x < 0 {
-		return -1
-	} else if x > 0 {
-		return 1
-	}
-	return nan
-}
+	"github.com/aclements/go-moremath/mathx"
+)
 
 func maxint(a, b int) int {
 	if a > b {
@@ -69,7 +60,7 @@ func bisect(f func(float64) float64, low, high, tolerance float64) (float64, boo
 	if -tolerance <= fhigh && fhigh <= tolerance {
 		return high, true
 	}
-	if sign(flow) == sign(fhigh) {
+	if mathx.Sign(flow) == mathx.Sign(fhigh) {
 		panic(fmt.Sprintf("root of f is not bracketed by [low, high]; f(%g)=%g f(%g)=%g", low, flow, high, fhigh))
 	}
 	for {
@@ -81,7 +72,7 @@ func bisect(f func(float64) float64, low, high, tolerance float64) (float64, boo
 		if mid == high || mid == low {
 			return mid, false
 		}
-		if sign(fmid) == sign(flow) {
+		if mathx.Sign(fmid) == mathx.Sign(flow) {
 			low = mid
 			flow = fmid
 		} else {
