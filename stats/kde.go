@@ -50,14 +50,12 @@ type KDE struct {
 	BoundaryMethod KDEBoundaryMethod
 
 	// [BoundaryMin, BoundaryMax) specify a bounded support for
-	// the KDE.  This is ignored if BoundaryMethod is
-	// BoundaryNone.
+	// the KDE. If these are both 0 (their default values), no
+	// boundary correction is performed (and the BoundaryMethod
+	// field is ignored).
 	//
 	// To specify a half-bounded support, set Min to math.Inf(-1)
 	// or Max to math.Inf(1).
-	//
-	// If these are both 0 (their default values), no boundary
-	// correction is performed.
 	BoundaryMin float64
 	BoundaryMax float64
 }
