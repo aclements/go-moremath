@@ -134,8 +134,8 @@ const (
 )
 
 type kdeKernel interface {
-	PDFEach(xs []float64) []float64
-	CDFEach(xs []float64) []float64
+	pdfEach(xs []float64) []float64
+	cdfEach(xs []float64) []float64
 }
 
 func (k *KDE) prepare() (kdeKernel, bool) {
@@ -188,7 +188,7 @@ func (kde *KDE) PDF(x float64) float64 {
 
 	y := func(x float64) float64 {
 		// Shift kernel to each of kde.xs and evaluate at x
-		ys := kernel.PDFEach(kde.normalizedXs(x))
+		ys := kernel.pdfEach(kde.normalizedXs(x))
 
 		// Kernel samples are weighted according to the weights of xs
 		wys := Sample{Xs: ys, Weights: kde.Sample.Weights}
@@ -234,7 +234,7 @@ func (kde *KDE) CDF(x float64) float64 {
 
 	y := func(x float64) float64 {
 		// Shift kernel integral to each of cdf.xs and evaluate at x
-		ys := kernel.CDFEach(kde.normalizedXs(x))
+		ys := kernel.cdfEach(kde.normalizedXs(x))
 
 		// Kernel samples are weighted according to the weights of xs
 		wys := Sample{Xs: ys, Weights: kde.Sample.Weights}
@@ -323,7 +323,7 @@ type epanechnikovKernel struct {
 	h float64
 }
 
-func (d epanechnikovKernel) PDFEach(xs []float64) []float64 {
+func (d epanechnikovKernel) pdfEach(xs []float64) []float64 {
 	ys := make([]float64, len(xs))
 	a := 0.75 / d.h
 	invhh := 1 / (d.h * d.h)
@@ -335,7 +335,7 @@ func (d epanechnikovKernel) PDFEach(xs []float64) []float64 {
 	return ys
 }
 
-func (d epanechnikovKernel) CDFEach(xs []float64) []float64 {
+func (d epanechnikovKernel) cdfEach(xs []float64) []float64 {
 	ys := make([]float64, len(xs))
 	invh := 1 / d.h
 	for i, x := range xs {

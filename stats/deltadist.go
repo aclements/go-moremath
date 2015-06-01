@@ -20,7 +20,7 @@ func (d DeltaDist) PDF(x float64) float64 {
 	return 0
 }
 
-func (d DeltaDist) PDFEach(xs []float64) []float64 {
+func (d DeltaDist) pdfEach(xs []float64) []float64 {
 	res := make([]float64, len(xs))
 	for i, x := range xs {
 		if x == d.T {
@@ -37,7 +37,7 @@ func (d DeltaDist) CDF(x float64) float64 {
 	return 0
 }
 
-func (d DeltaDist) CDFEach(xs []float64) []float64 {
+func (d DeltaDist) cdfEach(xs []float64) []float64 {
 	res := make([]float64, len(xs))
 	for i, x := range xs {
 		res[i] = d.CDF(x)

@@ -26,7 +26,7 @@ func (n NormalDist) PDF(x float64) float64 {
 	return math.Exp(-z*z/(2*n.Sigma*n.Sigma)) * invSqrt2Pi / n.Sigma
 }
 
-func (n NormalDist) PDFEach(xs []float64) []float64 {
+func (n NormalDist) pdfEach(xs []float64) []float64 {
 	res := make([]float64, len(xs))
 	if n.Mu == 0 && n.Sigma == 1 {
 		// Standard normal fast path
@@ -48,7 +48,7 @@ func (n NormalDist) CDF(x float64) float64 {
 	return math.Erfc(-(x-n.Mu)/(n.Sigma*math.Sqrt2)) / 2
 }
 
-func (n NormalDist) CDFEach(xs []float64) []float64 {
+func (n NormalDist) cdfEach(xs []float64) []float64 {
 	res := make([]float64, len(xs))
 	a := 1 / (n.Sigma * math.Sqrt2)
 	for i, x := range xs {
