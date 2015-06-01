@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/aclements/go-moremath/internal/mathtest"
+	"github.com/aclements/go-moremath/vec"
 )
 
 var aeq = mathtest.Aeq
@@ -59,7 +60,7 @@ func testInvCDF(t *testing.T, dist Dist, bounded bool) {
 
 	// Test points between.
 	vals = map[float64]float64{}
-	for _, p := range Linspace(0, 1, 11) {
+	for _, p := range vec.Linspace(0, 1, 11) {
 		if p == 0 || p == 1 {
 			continue
 		}
