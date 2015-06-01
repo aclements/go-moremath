@@ -12,9 +12,6 @@ import (
 // TODO: Consider moving this to stats/kde.  Then I could write things
 // like kde.Setup{Bandwidth: kde.Scott}.FromSample(sample)
 
-// TODO: Different bandwidth estimators need different inputs.  Can I
-// unify this better?
-
 // KDE represents options for constructing a kernel density estimate.
 //
 // Kernel density estimation is a method for constructing an estimate
@@ -30,7 +27,7 @@ import (
 // bin size and discretizing the data.
 //
 // To construct a kernel density estimate, create an instance of KDE
-// and then use the appropriate method to supply data.
+// and then use the From method to provide data.
 //
 // The default (zero) value of KDE is a reasonable default
 // configuration.
@@ -38,21 +35,22 @@ type KDE struct {
 	// Kernel is the kernel to use for the KDE.
 	Kernel KDEKernel
 
-	// Bandwidth is the bandwidth estimator to use for the KDE.
+	// Bandwidth is the bandwidth to use for the KDE.
 	//
-	// If this is nil, the default bandwidth estimator is used.
-	// Currently this is Scott, but this may change as better
-	// estimators are implemented.
-	Bandwidth BandwidthEstimator
+	// If this is zero, the bandwidth is computed from the
+	// provided data using a default bandwidth estimator
+	// (currently BandwidthScott).
+	Bandwidth float64
 
 	// BoundaryMethod is the boundary correction method to use for
-	// the KDE.
+	// the KDE. The default value is BoundaryReflect; however, the
+	// default bounds are effectively +/-inf, which is equivalent
+	// to performing no boundary correction.
 	BoundaryMethod KDEBoundaryMethod
 
 	// [BoundaryMin, BoundaryMax) specify a bounded support for
-	// the KDE. If these are both 0 (their default values), no
-	// boundary correction is performed (and the BoundaryMethod
-	// field is ignored).
+	// the KDE. If both are 0 (their default values), they are
+	// treated as +/-inf.
 	//
 	// To specify a half-bounded support, set Min to math.Inf(-1)
 	// or Max to math.Inf(1).
@@ -60,49 +58,33 @@ type KDE struct {
 	BoundaryMax float64
 }
 
-type BandwidthEstimator interface {
-	// Bandwidth returns the bandwidth estimate for a sample.
-	Bandwidth(s Sample) float64
-
-	// HistBandwidth returns the bandwidth estimate for the
-	// samples in hist.
-	HistBandwidth(hist Histogram, ss *StreamStats) float64
-}
-
-// Silverman is a bandwidth estimator implementing Silverman's Rule of
-// Thumb.  It's fast, but not very robust to outliers.
+// BandwidthSilverman is a bandwidth estimator implementing
+// Silverman's Rule of Thumb. It's fast, but not very robust to
+// outliers as it assumes data is approximately normal.
 //
 // Silverman, B. W. (1986) Density Estimation.
-var Silverman silverman
-
-type silverman struct{}
-
-func (silverman) compute(stddev, count float64) float64 {
-	return 1.06 * stddev * math.Pow(count, -1.0/5)
+func BandwidthSilverman(data interface {
+	StdDev() float64
+	Weight() float64
+}) float64 {
+	return 1.06 * data.StdDev() * math.Pow(data.Weight(), -1.0/5)
 }
 
-func (bw silverman) Bandwidth(s Sample) float64 {
-	return bw.compute(s.StdDev(), s.Weight())
-}
-
-func (bw silverman) HistBandwidth(hist Histogram, ss *StreamStats) float64 {
-	return bw.compute(ss.StdDev(), ss.Weight())
-}
-
-// Scott is a bandwidth estimator implementing Scott's Rule.  This is
-// generally robust to outliers: it chooses the minimum between the
-// sample's standard deviation and an robust estimator of a Gaussian
-// distribution's standard deviation.
+// BandwidthScott is a bandwidth estimator implementing Scott's Rule.
+// This is generally robust to outliers: it chooses the minimum
+// between the sample's standard deviation and an robust estimator of
+// a Gaussian distribution's standard deviation.
 //
 // Scott, D. W. (1992) Multivariate Density Estimation: Theory,
 // Practice, and Visualization.
-var Scott scott
-
-type scott struct{}
-
-func (scott) compute(stddev, iqr, count float64) float64 {
-	hScale := 1.06 * math.Pow(count, -1.0/5)
-	stdDev := stddev
+func BandwidthScott(data interface {
+	StdDev() float64
+	Weight() float64
+	Percentile(float64) float64
+}) float64 {
+	iqr := data.Percentile(0.75) - data.Percentile(0.25)
+	hScale := 1.06 * math.Pow(data.Weight(), -1.0/5)
+	stdDev := data.StdDev()
 	if stdDev < iqr/1.349 {
 		// Use Silverman's Rule of Thumb
 		return hScale * stdDev
@@ -113,28 +95,8 @@ func (scott) compute(stddev, iqr, count float64) float64 {
 	}
 }
 
-func (bw scott) Bandwidth(s Sample) float64 {
-	return bw.compute(s.StdDev(), s.IQR(), s.Weight())
-}
-
-func (bw scott) HistBandwidth(hist Histogram, ss *StreamStats) float64 {
-	return bw.compute(ss.StdDev(), HistogramIQR(hist), ss.Weight())
-}
-
 // TODO(austin) Implement bandwidth estimator from Botev, Grotowski,
 // Kroese. (2010) Kernel Density Estimation via Diffusion.
-
-// FixedBandwidth is a bandwidth estimator that simply returns its
-// value.
-type FixedBandwidth float64
-
-func (bw FixedBandwidth) Bandwidth(s Sample) float64 {
-	return float64(bw)
-}
-
-func (bw FixedBandwidth) HistBandwidth(hist Histogram, ss *StreamStats) float64 {
-	return float64(bw)
-}
 
 // KDEKernel represents a kernel to use for a KDE.
 type KDEKernel int
@@ -171,19 +133,18 @@ const (
 	boundaryNone
 )
 
-// FromSample returns the probability density function of the kernel
-// density estimate for s.
-func (k KDE) FromSample(s Sample) Dist {
+// From returns the probability density function of the kernel density
+// estimate for the sample s.
+func (k KDE) From(s Sample) Dist {
 	if s.Weights != nil && len(s.Xs) != len(s.Weights) {
 		panic("len(xs) != len(weights)")
 	}
 
 	// Compute bandwidth
-	bw := k.Bandwidth
-	if bw == nil {
-		bw = Scott
+	h := k.Bandwidth
+	if h == 0 {
+		h = BandwidthScott(s)
 	}
-	h := bw.Bandwidth(s)
 
 	// Construct kernel
 	kernel := kdeKernel(nil)
@@ -209,49 +170,9 @@ func (k KDE) FromSample(s Sample) Dist {
 	return &kdeDist{kernel, s.Xs, s.Weights, bm, min, max}
 }
 
-// TODO: Instead of FromHistogram, make histogram able to create a
-// weighted Sample and have a method that takes a sample and its
-// statistics interface separately (or have the caller produce their
-// own FixedBandwidth and expose the bandwidth estimators in terms of
-// the statistics interfaces they each require).
-
-// FromHistogram returns the probability density function of the kernel
-// density estimate for hist.
-//
-// The returned KDE is necessarily approximate because of the
-// histogram's bucketing of the samples.  However, as long as very few
-// samples are outside the bounds of the histogram and the returned
-// KDE is itself sampled at a coarser granularity than the granularity
-// of the histogram, this approximation is quite good.  Assuming this
-// approximation is sufficient, using a histogram to pre-process the
-// data can significantly reduce the time and space required to
-// construct a KDE.
-//
-// Note that the returned KDE may use the data from hist directly, so
-// hist must not be modified until the caller is done with the KDE.
-func (k KDE) FromHistogram(hist Histogram, ss *StreamStats) Dist {
-	// Construct weighted samples from hist
-	_, counts, _ := hist.Counts()
-	xs, weights := make([]float64, len(counts)), make([]float64, len(counts))
-
-	for bin, count := range counts {
-		// Assume samples fall at the "center" of this bin
-		xs[bin] = hist.BinToValue(float64(bin) + 0.5)
-		weights[bin] = float64(count)
-	}
-
-	bw := k.Bandwidth
-	if bw == nil {
-		bw = Scott
-	}
-
-	kFixed := k
-	kFixed.Bandwidth = FixedBandwidth(bw.HistBandwidth(hist, ss))
-	return kFixed.FromSample(Sample{Xs: xs, Weights: weights})
-
-	// TODO(austin) Somehow warn when too much weight is outside
-	// histogram?
-}
+// TODO: For KDEs of histograms, make histograms able to create a
+// weighted Sample and simply require the caller to provide a
+// good bandwidth from a StreamStats.
 
 type kdeKernel interface {
 	PDFEach(xs []float64) []float64
