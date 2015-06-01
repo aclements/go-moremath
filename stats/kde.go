@@ -36,7 +36,7 @@ import (
 // configuration.
 type KDE struct {
 	// Kernel is the kernel to use for the KDE.
-	Kernel Kernel
+	Kernel KDEKernel
 
 	// Bandwidth is the bandwidth estimator to use for the KDE.
 	//
@@ -47,7 +47,7 @@ type KDE struct {
 
 	// BoundaryMethod is the boundary correction method to use for
 	// the KDE.
-	BoundaryMethod BoundaryMethod
+	BoundaryMethod KDEBoundaryMethod
 
 	// [BoundaryMin, BoundaryMax) specify a bounded support for
 	// the KDE.  This is ignored if BoundaryMethod is
@@ -138,12 +138,13 @@ func (bw FixedBandwidth) HistBandwidth(hist Histogram, ss *StreamStats) float64 
 	return float64(bw)
 }
 
-// Kernel represents a kernel to use for a KDE.
-type Kernel int
+// KDEKernel represents a kernel to use for a KDE.
+type KDEKernel int
 
-//go:generate stringer -type=Kernel
+//go:generate stringer -type=KDEKernel
+
 const (
-	GaussianKernel Kernel = iota
+	GaussianKernel KDEKernel = iota
 
 	// DeltaKernel is a Dirac delta function.  The PDF of such a
 	// KDE is not well-defined, but the CDF will represent each
@@ -152,18 +153,19 @@ const (
 	DeltaKernel
 )
 
-// BoundaryMethod represents a boundary correction method for
+// KDEBoundaryMethod represents a boundary correction method for
 // constructing a KDE with bounded support.
-type BoundaryMethod int
+type KDEBoundaryMethod int
 
-//go:generate stringer -type=BoundaryMethod
+//go:generate stringer -type=KDEBoundaryMethod
+
 const (
 	// BoundaryReflect reflects the density estimate at the
 	// boundaries.  For example, for a KDE with support [0, inf),
 	// this is equivalent to ƒ̂ᵣ(x)=ƒ̂(x)+ƒ̂(-x) for x>=0.  This is a
 	// simple and fast technique, but enforces that ƒ̂ᵣ'(0)=0, so
 	// it may not be applicable to all distributions.
-	BoundaryReflect BoundaryMethod = iota
+	BoundaryReflect KDEBoundaryMethod = iota
 
 	// boundaryNone represents no boundary correction.
 	//
@@ -261,7 +263,7 @@ type kdeKernel interface {
 type kdeDist struct {
 	kernel      kdeKernel
 	xs, weights []float64
-	bm          BoundaryMethod
+	bm          KDEBoundaryMethod
 	min, max    float64 // Support bounds
 }
 
