@@ -28,9 +28,13 @@ func Map(f func(float64) float64, xs []float64) []float64 {
 }
 
 // Linspace returns num values spaced evenly between lo and hi,
-// inclusive.
+// inclusive. If num is 1, this returns an array consisting of lo.
 func Linspace(lo, hi float64, num int) []float64 {
 	res := make([]float64, num)
+	if num == 1 {
+		res[0] = lo
+		return res
+	}
 	for i := 0; i < num; i++ {
 		res[i] = lo + float64(i)*(hi-lo)/float64(num-1)
 	}
