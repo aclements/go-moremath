@@ -59,3 +59,18 @@ func Sum(xs []float64) float64 {
 	}
 	return sum
 }
+
+// Concat returns the concatenation of its arguments. It does not
+// modify its inputs.
+func Concat(xss ...[]float64) []float64 {
+	total := 0
+	for _, xs := range xss {
+		total += len(xs)
+	}
+	out := make([]float64, total)
+	pos := 0
+	for _, xs := range xss {
+		pos += copy(out[pos:], xs)
+	}
+	return out
+}
