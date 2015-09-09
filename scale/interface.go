@@ -34,3 +34,21 @@ type Quantitative interface {
 	// range.
 	Nice(n int)
 }
+
+// A QQ maps from a source Quantitative scale to a destination
+// Quantitative scale.
+type QQ struct {
+	Src, Dest Quantitative
+}
+
+// Map maps from a value x in the source scale's input range to a
+// value y in the destination scale's input range.
+func (q QQ) Map(x float64) float64 {
+	return q.Dest.Unmap(q.Src.Map(x))
+}
+
+// Unmap maps from a value y in the destination scale's input range to
+// a value x in the source scale's input range.
+func (q QQ) Unmap(x float64) float64 {
+	return q.Src.Unmap(q.Dest.Map(x))
+}
