@@ -17,7 +17,7 @@ func main() {
 	s := readInput(os.Stdin)
 	s.Sort()
 
-	fmt.Printf("N %d  mean %.6g", len(s.Xs), s.Mean())
+	fmt.Printf("N %d  sum %.6g  mean %.6g", len(s.Xs), s.Sum(), s.Mean())
 	gmean := s.GeoMean()
 	if !math.IsNaN(gmean) {
 		fmt.Printf("  gmean %.6g", gmean)
