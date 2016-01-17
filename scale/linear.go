@@ -12,8 +12,8 @@ import (
 
 type Linear struct {
 	// Min and Max specify the lower and upper bounds of the input
-	// range. The input range [Min, Max] will be linearly mapped
-	// to the output domain [0, 1].
+	// domain. The input domain [Min, Max] will be linearly mapped
+	// to the output range [0, 1].
 	Min, Max float64
 
 	// Base specifies a base for computing ticks. Ticks will be

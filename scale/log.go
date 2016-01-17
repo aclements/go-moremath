@@ -10,8 +10,8 @@ type Log struct {
 	private struct{}
 
 	// Min and Max specify the lower and upper bounds of the input
-	// range. The input range [Min, Max] will be mapped to the
-	// output domain [0, 1]. The range [Min, Max] must not include
+	// domain. The input range [Min, Max] will be mapped to the
+	// output range [0, 1]. The range [Min, Max] must not include
 	// 0.
 	Min, Max float64
 

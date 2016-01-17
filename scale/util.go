@@ -18,7 +18,7 @@ func clamp(x float64) float64 {
 // autoScale returns the smallest m for which fn(m) <= n. This is
 // intended to be used for auto-scaling tick values, where fn maps
 // from a tick "level" to the number of ticks at that level in the
-// scale's input range.
+// scale's input domain.
 //
 // fn must be a monotonically decreasing function.
 func autoScale(n int, fn func(level int) int, guess int) int {
