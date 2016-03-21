@@ -129,7 +129,9 @@ func (s *Log) spacingAtLevel(level int, roundOut bool) (firstN, lastN, ebase flo
 }
 
 func (s Log) Ticks(n int) (major, minor []float64) {
-	if s.Min == s.Max {
+	if n <= 0 {
+		return nil, nil
+	} else if s.Min == s.Max {
 		return []float64{s.Min}, []float64{}
 	}
 

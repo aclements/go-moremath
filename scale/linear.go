@@ -105,7 +105,9 @@ func (s *Linear) spacingAtLevel(level int, roundOut bool) (firstN, lastN, spacin
 }
 
 func (s Linear) Ticks(n int) (major, minor []float64) {
-	if s.Min == s.Max {
+	if n <= 0 {
+		return nil, nil
+	} else if s.Min == s.Max {
 		return []float64{s.Min}, []float64{}
 	} else if s.Min > s.Max {
 		s.Min, s.Max = s.Max, s.Min
