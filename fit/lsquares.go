@@ -5,7 +5,9 @@
 package fit
 
 import (
+	"fmt"
 	"math"
+	"strings"
 
 	"github.com/gonum/matrix/mat64"
 )
@@ -92,11 +94,45 @@ func LinearLeastSquares(xs, ys, weights []float64, terms ...func(xs, termOut []f
 	return BVals
 }
 
+// PolynomialRegressionResult is the resulting polynomial from a
+// PolynomialRegression.
+//
+// TODO: Should this just be a least squares regression result? We
+// have the terms functions, so we can construct F, though it won't be
+// very efficient.
+type PolynomialRegressionResult struct {
+	// Coefficients is the coefficients of the fitted polynomial.
+	// Coefficients[i] is the coefficient of the x^i term.
+	Coefficients []float64
+
+	// F evaluates the fitted polynomial at x.
+	F func(x float64) float64
+}
+
+func (r PolynomialRegressionResult) String() string {
+	var terms []string
+	for pow, factor := range r.Coefficients {
+		switch {
+		case factor == 0:
+			continue
+		case pow == 0:
+			terms = append(terms, fmt.Sprintf("%v", factor))
+		case pow == 1:
+			terms = append(terms, fmt.Sprintf("%vx", factor))
+		default:
+			terms = append(terms, fmt.Sprintf("%vx^%d", factor, pow))
+		}
+	}
+	if len(terms) == 0 {
+		return "0"
+	}
+	return strings.Join(terms, "+")
+}
+
 // PolynomialRegression performs a least squares regression with a
-// polynomial of the given degree. It returns the coefficients of the
-// best-fit polynomial. If weights is non-nil, it is used to weight
-// the residuals.
-func PolynomialRegression(xs, ys, weights []float64, degree int) (coefficients []float64) {
+// polynomial of the given degree. If weights is non-nil, it is used
+// to weight the residuals.
+func PolynomialRegression(xs, ys, weights []float64, degree int) PolynomialRegressionResult {
 	terms := make([]func(xs, termOut []float64), degree+1)
 	terms[0] = func(xs, termsOut []float64) {
 		for i := range termsOut {
@@ -123,5 +159,15 @@ func PolynomialRegression(xs, ys, weights []float64, degree int) (coefficients [
 		}
 	}
 
-	return LinearLeastSquares(xs, ys, weights, terms...)
+	coeffs := LinearLeastSquares(xs, ys, weights, terms...)
+	f := func(x float64) float64 {
+		y := coeffs[0]
+		xp := x
+		for _, c := range coeffs[1:] {
+			y += xp * c
+			xp *= x
+		}
+		return y
+	}
+	return PolynomialRegressionResult{coeffs, f}
 }

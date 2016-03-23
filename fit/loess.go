@@ -89,17 +89,10 @@ func LOESS(xs, ys []float64, degree int, span float64) func(x float64) float64 {
 		}
 
 		// Compute the polynomial regression at x.
-		coeffs := PolynomialRegression(closest, ys[n:n+q], weights, degree)
+		pr := PolynomialRegression(closest, ys[n:n+q], weights, degree)
 
 		// Evaluate the polynomial at x.
-		y := 0.0
-		xn := 1.0
-		for _, coeff := range coeffs {
-			y += coeff * xn
-			xn *= x
-		}
-
-		return y
+		return pr.F(x)
 	}
 }
 
