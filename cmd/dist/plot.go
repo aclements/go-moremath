@@ -81,7 +81,7 @@ func commonScale(dist ...stats.Dist) (xscale scale.QQ, xs []float64) {
 	return
 }
 
-func fprintScale(w io.Writer, scale scale.QQ) error {
+func fprintScale(w io.Writer, sc scale.QQ) error {
 	img := make([][]bool, printWidth)
 	for i := range img {
 		if i < printXMargin || i >= printWidth-printXMargin {
@@ -90,11 +90,11 @@ func fprintScale(w io.Writer, scale scale.QQ) error {
 			img[i] = []bool{true, false}
 		}
 	}
-	major, _ := scale.Src.Ticks(10)
+	major, _ := sc.Src.Ticks(scale.TickOptions{Max: 3})
 	labels := make([]string, len(major))
 	lpos := make([]int, len(major))
 	for i, tick := range major {
-		x := int(scale.Map(tick))
+		x := int(sc.Map(tick))
 		img[x][1] = true
 		// TODO: It would be nice if the scale could format
 		// these ticks in a consistent way.

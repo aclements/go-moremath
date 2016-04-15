@@ -16,7 +16,9 @@ type Log struct {
 	Min, Max float64
 
 	// Base specifies the base of the logarithm for computing
-	// ticks. Typically, ticks will be placed at Base^n for n ∈ ℤ.
+	// ticks. Ticks will be placed at Base^((2^l)*n) for tick
+	// level l ∈ ℕ and n ∈ ℤ. Typically l is 0, in which case this
+	// is simply Base^n.
 	Base int
 
 	// If Clamp is true, the input is clamped to [Min, Max].
@@ -96,8 +98,8 @@ func (s *Log) SetClamp(clamp bool) {
 // The tick levels are:
 //
 // Level 0 is a major tick at Base^n (1, 10, 100, ...)
-// Level 1 is a major tick at Base^2^n (1, 100, 10000, ...)
-// Level 2 is a major tick at Base^4^n (1, 10000, 100000000, ...)
+// Level 1 is a major tick at Base^(2*n) (1, 100, 10000, ...)
+// Level 2 is a major tick at Base^(4*n) (1, 10000, 100000000, ...)
 //
 // That is, each level eliminates every other tick. Levels below 0 are
 // not defined.
@@ -128,13 +130,7 @@ func (s *Log) spacingAtLevel(level int, roundOut bool) (firstN, lastN, ebase flo
 	return
 }
 
-func (s Log) Ticks(n int) (major, minor []float64) {
-	if n <= 0 {
-		return nil, nil
-	} else if s.Min == s.Max {
-		return []float64{s.Min}, []float64{}
-	}
-
+func (s *Log) tickFuncs(roundOut bool) (func(level int) int, func(level int) []float64) {
 	neg, min, max := s.ebounds()
 
 	// nticksAtLevel returns the number of ticks in [min, max] at
@@ -145,11 +141,9 @@ func (s Log) Ticks(n int) (major, minor []float64) {
 			return maxInt
 		}
 
-		firstN, lastN, _ := s.spacingAtLevel(level, false)
+		firstN, lastN, _ := s.spacingAtLevel(level, roundOut)
 		return int(lastN - firstN + 1)
 	}
-
-	level := autoScale(n, nticksAtLevel, 0)
 
 	ticksAtLevel := func(level int) []float64 {
 		ticks := []float64{}
@@ -170,7 +164,7 @@ func (s Log) Ticks(n int) (major, minor []float64) {
 				}
 			}
 		} else {
-			firstN, lastN, base := s.spacingAtLevel(level, false)
+			firstN, lastN, base := s.spacingAtLevel(level, roundOut)
 			for n := firstN; n <= lastN; n++ {
 				ticks = append(ticks, math.Pow(base, n))
 			}
@@ -187,19 +181,35 @@ func (s Log) Ticks(n int) (major, minor []float64) {
 		return ticks
 	}
 
-	return ticksAtLevel(level), ticksAtLevel(level - 1)
+	return nticksAtLevel, ticksAtLevel
 }
 
-func (s *Log) Nice(n int) {
-	neg, _, _ := s.ebounds()
-
-	nticksAtLevel := func(level int) int {
-		firstN, lastN, _ := s.spacingAtLevel(level, true)
-		return int(lastN - firstN + 1)
+func (s Log) Ticks(o TickOptions) (major, minor []float64) {
+	if o.Max <= 0 {
+		return nil, nil
+	} else if s.Min == s.Max {
+		return []float64{s.Min}, []float64{s.Max}
 	}
+	count, ticks := s.tickFuncs(false)
 
-	level := autoScale(n, nticksAtLevel, 0)
+	level, ok := o.FindLevel(count, ticks, 0)
+	if !ok {
+		return nil, nil
+	}
+	return ticks(level), ticks(level - 1)
+}
 
+func (s *Log) Nice(o TickOptions) {
+	if s.Min == s.Max {
+		return
+	}
+	neg, _, _ := s.ebounds()
+	count, ticks := s.tickFuncs(true)
+
+	level, ok := o.FindLevel(count, ticks, 0)
+	if !ok {
+		return
+	}
 	firstN, lastN, base := s.spacingAtLevel(level, true)
 	s.Min = math.Pow(base, firstN)
 	s.Max = math.Pow(base, lastN)

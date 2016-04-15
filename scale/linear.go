@@ -18,8 +18,9 @@ type Linear struct {
 
 	// Base specifies a base for computing ticks. Ticks will be
 	// placed at powers of Base; that is at n*Base^l for n ∈ ℤ and
-	// some integer l. As a special case, a base of 0 alternates
-	// between ticks at n*10^l and ticks at 5n*10^l.
+	// some integer tick level l. As a special case, a base of 0
+	// alternates between ticks at n*10^⌊l/2⌋ and ticks at
+	// 5n*10^⌊l/2⌋.
 	Base int
 
 	// If Clamp is true, the input is clamped to [Min, Max].
@@ -104,11 +105,11 @@ func (s *Linear) spacingAtLevel(level int, roundOut bool) (firstN, lastN, spacin
 	return
 }
 
-func (s Linear) Ticks(n int) (major, minor []float64) {
-	if n <= 0 {
+func (s Linear) Ticks(o TickOptions) (major, minor []float64) {
+	if o.Max <= 0 {
 		return nil, nil
 	} else if s.Min == s.Max {
-		return []float64{s.Min}, []float64{}
+		return []float64{s.Min}, []float64{s.Min}
 	} else if s.Min > s.Max {
 		s.Min, s.Max = s.Max, s.Min
 	}
@@ -120,18 +121,20 @@ func (s Linear) Ticks(n int) (major, minor []float64) {
 		return int(lastN - firstN + 1)
 	}
 
-	level := autoScale(n, nticksAtLevel, s.guessLevel())
-
 	ticksAtLevel := func(level int) []float64 {
 		firstN, lastN, spacing := s.spacingAtLevel(level, false)
 		n := int(lastN - firstN + 1)
 		return vec.Linspace(firstN*spacing, lastN*spacing, n)
 	}
 
+	level, ok := o.FindLevel(nticksAtLevel, ticksAtLevel, s.guessLevel())
+	if !ok {
+		return nil, nil
+	}
 	return ticksAtLevel(level), ticksAtLevel(level - 1)
 }
 
-func (s *Linear) Nice(n int) {
+func (s *Linear) Nice(o TickOptions) {
 	if s.Min == s.Max {
 		s.Min -= 0.5
 		s.Max += 0.5
@@ -144,7 +147,16 @@ func (s *Linear) Nice(n int) {
 		return int(lastN - firstN + 1)
 	}
 
-	level := autoScale(n, nticksAtLevel, s.guessLevel())
+	ticksAtLevel := func(level int) []float64 {
+		firstN, lastN, spacing := s.spacingAtLevel(level, true)
+		n := int(lastN - firstN + 1)
+		return vec.Linspace(firstN*spacing, lastN*spacing, n)
+	}
+
+	level, ok := o.FindLevel(nticksAtLevel, ticksAtLevel, s.guessLevel())
+	if !ok {
+		return
+	}
 
 	firstN, lastN, spacing := s.spacingAtLevel(level, true)
 	s.Min = firstN * spacing

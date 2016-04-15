@@ -21,18 +21,18 @@ type Quantitative interface {
 	// SetClamp sets the clamping mode of this scale.
 	SetClamp(bool)
 
-	// Ticks returns a set of at most n major ticks, plus minor
-	// ticks. These ticks will have "nice" values within the input
-	// domain. Both arrays are sorted in ascending order and minor
-	// includes ticks in major.
-	Ticks(n int) (major, minor []float64)
+	// Ticks returns major and minor ticks that satisfy the
+	// constraints given by o. These ticks will have "nice" values
+	// within the input domain. Both arrays are sorted in
+	// ascending order and minor includes ticks in major.
+	Ticks(o TickOptions) (major, minor []float64)
 
-	// Nice expands the input domain of this scale to "nice" values
-	// for covering the input domain with n major ticks. After
-	// calling Nice(n), the first and last major ticks returned by
-	// Ticks(n) will equal the lower and upper bounds of the input
-	// domain.
-	Nice(n int)
+	// Nice expands the input domain of this scale to "nice"
+	// values for covering the input domain satisfying the
+	// constraints given by o. After calling Nice(o), the first
+	// and last major ticks returned by Ticks(o) will equal the
+	// lower and upper bounds of the input domain.
+	Nice(o TickOptions)
 }
 
 // A QQ maps from a source Quantitative scale to a destination
