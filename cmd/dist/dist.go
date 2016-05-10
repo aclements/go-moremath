@@ -9,12 +9,17 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/aclements/go-moremath/stats"
 )
 
 func main() {
 	s := readInput(os.Stdin)
+	if len(s.Xs) == 0 {
+		fmt.Fprintln(os.Stderr, "no input")
+		return
+	}
 	s.Sort()
 
 	fmt.Printf("N %d  sum %.6g  mean %.6g", len(s.Xs), s.Sum(), s.Mean())
@@ -45,6 +50,10 @@ func readInput(r io.Reader) (sample stats.Sample) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		l := scanner.Text()
+		l = strings.TrimSpace(l)
+		if l == "" {
+			continue
+		}
 		value, err := strconv.ParseFloat(l, 64)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
