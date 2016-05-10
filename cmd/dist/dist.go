@@ -1,5 +1,25 @@
-// dist reads newline-separated numbers from stdin and describes their
-// distribution.
+// dist reads newline-separated numbers and describes their distribution.
+//
+// For example,
+//
+//  $ seq 1 20 | grep -v 1 | dist
+//  N 9  sum 64  mean 7.11111  gmean 5.78509  std dev 5.34894  variance 28.6111
+//
+//       min 2
+//     1%ile 2
+//     5%ile 2
+//    25%ile 3.66667
+//    median 6
+//    75%ile 8.33333
+//    95%ile 20
+//    99%ile 20
+//       max 20
+//
+//  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣠⠖⠒⠒⠒⠒⠒⠒⠒⠒⠒⠒⠒⠒⠒⠦⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡖ 0.1
+//  ⠀⠀⠀⠀⠀⠀⠀⢀⣠⠴⠊⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠲⢤⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇
+//  ⠠⠤⠤⠤⠤⠴⠒⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠑⠲⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠴⠒⠋⠉⠉⠀⠀⠉⠉⠙⠒⠦⠤⠤⠤⠤⠄⠧ 0.0
+//  ⠈⠉⠉⠉⠉⠙⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠋⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠋⠉⠉⠉⠉⠉⠉⠉⠉⠉⠁
+//       0                         10                         20
 package main
 
 import (
