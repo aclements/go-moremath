@@ -152,6 +152,7 @@ func PolynomialRegression(xs, ys, weights []float64, degree int) PolynomialRegre
 		}
 	}
 	for d := 3; d < len(terms); d++ {
+		d := d
 		terms[d] = func(xs, termOut []float64) {
 			for i, x := range xs {
 				termOut[i] = math.Pow(x, float64(d+1))
