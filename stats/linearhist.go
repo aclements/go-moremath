@@ -6,9 +6,10 @@ package stats
 
 // LinearHist is a Histogram with uniformly-sized bins.
 type LinearHist struct {
-	min, max, delta float64
-	low, high       uint
-	bins            []uint
+	min, max  float64
+	delta     float64 // 1/bin width (to avoid division in hot path)
+	low, high uint
+	bins      []uint
 }
 
 // NewLinearHist returns an empty histogram with nbins uniformly-sized
@@ -38,5 +39,5 @@ func (h *LinearHist) Counts() (uint, []uint, uint) {
 }
 
 func (h *LinearHist) BinToValue(bin float64) float64 {
-	return h.min + bin*h.delta
+	return h.min + bin/h.delta
 }
