@@ -126,7 +126,8 @@ func DomFrontier(g graph.BiGraph, root int, idom []int) [][]int {
 }
 
 // Dom computes the dominator tree from the immediate dominators (as
-// computed by IDom).
+// computed by IDom). The nodes of the resulting DomTree have the same
+// numbering as the nodes in the original graph.
 func Dom(idom []int) *DomTree {
 	children := make([][]int, len(idom))
 
