@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/aclements/go-moremath/graph"
 )
@@ -31,6 +32,13 @@ func defaultLabel(node int) string {
 // Print writes the Dot form of g to os.Stdout.
 func (d Dot) Print(g graph.Graph) error {
 	return d.Fprint(g, os.Stdout)
+}
+
+// Sprint returns the Dot form of g as a string.
+func (d Dot) Sprint(g graph.Graph) string {
+	var buf strings.Builder
+	d.Fprint(g, &buf)
+	return buf.String()
 }
 
 // Fprint writes the Dot form of g to w.
