@@ -5,8 +5,6 @@
 package graphalg
 
 import (
-	"math/big"
-
 	"github.com/aclements/go-moremath/graph"
 )
 
@@ -29,19 +27,15 @@ type Euler struct {
 // Visit performs a Euler tour over g starting at root and invokes the
 // callbacks on e.
 func (e Euler) Visit(g graph.Graph, root int) {
-	const stackNodes = 1024
-	var words [stackNodes / 32]big.Word
-	var visited big.Int
-	visited.SetBits(words[:]) // Keep small graphs on the stack
-
+	visited := NewNodeMarks()
 	var visit func(n int)
 	visit = func(n int) {
 		if e.Enter != nil {
 			e.Enter(n)
 		}
-		visited.SetBit(&visited, n, 1)
+		visited.Mark(n)
 		for _, succ := range g.Out(n) {
-			if visited.Bit(succ) == 0 {
+			if !visited.Test(succ) {
 				visit(succ)
 			}
 		}

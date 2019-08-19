@@ -5,25 +5,19 @@
 package graphalg
 
 import (
-	"math/big"
-
 	"github.com/aclements/go-moremath/graph"
 )
 
 // PreOrder returns the nodes of g visited in pre-order.
 func PreOrder(g graph.Graph, root int) []int {
-	const stackNodes = 1024
-	var words [stackNodes / 32]big.Word
-	var visited big.Int
-	visited.SetBits(words[:]) // Keep small graphs on the stack
-
+	visited := NewNodeMarks()
 	out := []int{}
 	var visit func(n int)
 	visit = func(n int) {
 		out = append(out, n)
-		visited.SetBit(&visited, n, 1)
+		visited.Mark(n)
 		for _, succ := range g.Out(n) {
-			if visited.Bit(succ) == 0 {
+			if !visited.Test(succ) {
 				visit(succ)
 			}
 		}
@@ -35,17 +29,13 @@ func PreOrder(g graph.Graph, root int) []int {
 
 // PostOrder returns the nodes of g visited in post-order.
 func PostOrder(g graph.Graph, root int) []int {
-	const stackNodes = 1024
-	var words [stackNodes / 32]big.Word
-	var visited big.Int
-	visited.SetBits(words[:]) // Keep small graphs on the stack
-
+	visited := NewNodeMarks()
 	out := []int{}
 	var visit func(n int)
 	visit = func(n int) {
-		visited.SetBit(&visited, n, 1)
+		visited.Mark(n)
 		for _, succ := range g.Out(n) {
-			if visited.Bit(succ) == 0 {
+			if !visited.Test(succ) {
 				visit(succ)
 			}
 		}
