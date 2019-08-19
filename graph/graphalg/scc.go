@@ -15,9 +15,9 @@ import (
 type SCCFlags int
 
 const (
-	// SCCSubNodeComponent instructs SCC to record a mapping from
+	// SCCSubnodeComponent instructs SCC to record a mapping from
 	// subnode to component ID containing that subnode.
-	SCCSubNodeComponent SCCFlags = 1 << iota
+	SCCSubnodeComponent SCCFlags = 1 << iota
 
 	// SCCEdges instructs SCC to record edges between components.
 	// Otherwise, the resulting SCC graph will have a node for
@@ -38,7 +38,7 @@ func SCC(g graph.Graph, flags SCCFlags) *SCCGraph {
 	if flags&SCCEdges != 0 {
 		// Edge construction requires sub-graph ID ->
 		// component ID mapping.
-		flags |= SCCSubNodeComponent
+		flags |= SCCSubnodeComponent
 	}
 
 	// This is based on the presentation of Tarjan's algorithm in
@@ -87,7 +87,7 @@ func SCC(g graph.Graph, flags SCCFlags) *SCCGraph {
 				// Successor is in another component.
 				// Record the out-edge from this
 				// component.
-				cid := sccs.subNodeComponent[oid]
+				cid := sccs.subnodeComponent[oid]
 				out = append(out, outEdge{cid, stackPos})
 			}
 		}
@@ -100,7 +100,7 @@ func SCC(g graph.Graph, flags SCCFlags) *SCCGraph {
 
 		// Node n is a root of an SCC. Pop the stack to
 		// construct the component.
-		cid := len(sccs.subNodeIndexes)
+		cid := len(sccs.subnodeIndexes)
 		var i int
 		for i = len(stack) - 1; i >= 0; i-- {
 			oid := stack[i]
@@ -108,15 +108,15 @@ func SCC(g graph.Graph, flags SCCFlags) *SCCGraph {
 			// min. This also indicates we've connected
 			// oid to a component.
 			low[oid] = ^uint(0)
-			if flags&SCCSubNodeComponent != 0 {
-				sccs.subNodeComponent[oid] = cid
+			if flags&SCCSubnodeComponent != 0 {
+				sccs.subnodeComponent[oid] = cid
 			}
 			if oid == nid {
 				break
 			}
 		}
-		sccs.subNodeIndexes = append(sccs.subNodeIndexes, len(sccs.subNodes))
-		sccs.subNodes = append(sccs.subNodes, stack[i:]...)
+		sccs.subnodeIndexes = append(sccs.subnodeIndexes, len(sccs.subnodes))
+		sccs.subnodes = append(sccs.subnodes, stack[i:]...)
 		stack = stack[:i]
 
 		// Collect out-edges of this SCC.
@@ -146,9 +146,9 @@ func SCC(g graph.Graph, flags SCCFlags) *SCCGraph {
 		}
 	}
 
-	sccs.subNodes = make([]int, 0, numNodes)
-	if flags&SCCSubNodeComponent != 0 {
-		sccs.subNodeComponent = make([]int, numNodes)
+	sccs.subnodes = make([]int, 0, numNodes)
+	if flags&SCCSubnodeComponent != 0 {
+		sccs.subnodeComponent = make([]int, numNodes)
 	}
 
 	for nid := range low {
@@ -157,7 +157,7 @@ func SCC(g graph.Graph, flags SCCFlags) *SCCGraph {
 			connect(nid)
 		}
 	}
-	sccs.subNodeIndexes = append(sccs.subNodeIndexes, len(sccs.subNodes))
+	sccs.subnodeIndexes = append(sccs.subnodeIndexes, len(sccs.subnodes))
 	if flags&SCCEdges != 0 {
 		sccs.outIndexes = append(sccs.outIndexes, len(sccs.out))
 	}
@@ -175,35 +175,35 @@ func SCC(g graph.Graph, flags SCCFlags) *SCCGraph {
 // edges between the components that follow the edges in the
 // underlying graph.
 type SCCGraph struct {
-	subNodes       []int // Concatenated list of sub-graph nodes in each component
-	subNodeIndexes []int // Component ID -> subNodes base index
+	subnodes       []int // Concatenated list of sub-graph nodes in each component
+	subnodeIndexes []int // Component ID -> subnodes base index
 
-	subNodeComponent []int // Sub-node ID -> component ID
+	subnodeComponent []int // Sub-node ID -> component ID
 
 	out        []int // Concatenated list of out-edges of each component
 	outIndexes []int // Component ID -> out base index
 }
 
-// SubNodes returns the IDs of the nodes in the underlying graph that
+// Subnodes returns the IDs of the nodes in the underlying graph that
 // comprise component cid.
-func (g *SCCGraph) SubNodes(cid int) []int {
-	return g.subNodes[g.subNodeIndexes[cid]:g.subNodeIndexes[cid+1]]
+func (g *SCCGraph) Subnodes(cid int) []int {
+	return g.subnodes[g.subnodeIndexes[cid]:g.subnodeIndexes[cid+1]]
 }
 
-// SubNodeComponent returns the component ID (a node ID in g) of
+// SubnodeComponent returns the component ID (a node ID in g) of
 // sub-graph node subID (a node ID in the underlying graph).
 //
 // Graph g must have been constructed with flag SCCSubnodeComponent.
-func (g *SCCGraph) SubNodeComponent(subID int) (componentID int) {
-	if g.subNodeComponent == nil {
-		panic("SCCGraph constructed without SCCSubNodeComponent flag")
+func (g *SCCGraph) SubnodeComponent(subID int) (componentID int) {
+	if g.subnodeComponent == nil {
+		panic("SCCGraph constructed without SCCSubnodeComponent flag")
 	}
-	return g.subNodeComponent[subID]
+	return g.subnodeComponent[subID]
 }
 
 // NumNodes returns the number of strongly-connected components in g.
 func (g *SCCGraph) NumNodes() int {
-	return len(g.subNodeIndexes) - 1
+	return len(g.subnodeIndexes) - 1
 }
 
 // Out returns the IDs of the components for which there are any edges
