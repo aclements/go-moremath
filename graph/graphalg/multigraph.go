@@ -6,7 +6,7 @@ package graphalg
 
 import "github.com/aclements/go-moremath/graph"
 
-// SimplifyMulti simplifies a multigraph to an simple graph.
+// SimplifyMulti simplifies a multigraph to a weighted simple graph.
 //
 // If g is a weighted graph, each edge in the result receives the sum
 // of the weights of the combined edges in g. If g is not weighted,
