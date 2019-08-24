@@ -48,14 +48,14 @@ func (d Dot) Fprint(g graph.Graph, w io.Writer) error {
 		label = defaultLabel
 	}
 
-	_, err := fmt.Fprintf(w, "digraph %s {\n", dotString(d.Name))
+	_, err := fmt.Fprintf(w, "digraph %s {\n", DotString(d.Name))
 	if err != nil {
 		return err
 	}
 
 	for i := 0; i < g.NumNodes(); i++ {
 		// Define node.
-		_, err = fmt.Fprintf(w, "n%d [label=%s];\n", i, dotString(label(i)))
+		_, err = fmt.Fprintf(w, "n%d [label=%s];\n", i, DotString(label(i)))
 		if err != nil {
 			return err
 		}
@@ -73,8 +73,12 @@ func (d Dot) Fprint(g graph.Graph, w io.Writer) error {
 	return err
 }
 
-// dotString returns s as a quoted dot string.
-func dotString(s string) string {
+// DotString returns s as a quoted dot string.
+//
+// Users of the Dot type don't need to call this, since it will
+// automatically quote strings. However, this is useful for building
+// custom dot output.
+func DotString(s string) string {
 	buf := []byte{'"'}
 	for i := 0; i < len(s); i++ {
 		switch s[i] {
