@@ -53,18 +53,18 @@ func defaultLabel(node int) string {
 
 // Print writes the Dot form of g to os.Stdout.
 func (d Dot) Print(g graph.Graph) error {
-	return d.Fprint(g, os.Stdout)
+	return d.Fprint(os.Stdout, g)
 }
 
 // Sprint returns the Dot form of g as a string.
 func (d Dot) Sprint(g graph.Graph) string {
 	var buf strings.Builder
-	d.Fprint(g, &buf)
+	d.Fprint(&buf, g)
 	return buf.String()
 }
 
 // Fprint writes the Dot form of g to w.
-func (d Dot) Fprint(g graph.Graph, w io.Writer) error {
+func (d Dot) Fprint(w io.Writer, g graph.Graph) error {
 	label := d.Label
 	if label == nil {
 		label = defaultLabel
