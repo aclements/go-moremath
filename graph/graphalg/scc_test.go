@@ -125,7 +125,7 @@ func testSCC(t *testing.T, test sccTest) {
 	// Check components.
 	var components [][]int
 	for i := 0; i < scc.NumNodes(); i++ {
-		comp := append([]int{}, scc.SubNodes(i)...)
+		comp := append([]int{}, scc.Subnodes(i)...)
 		sort.Ints(comp)
 		components = append(components, comp)
 	}
