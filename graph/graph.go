@@ -64,3 +64,10 @@ func (g IntGraph) NumNodes() int {
 func (g IntGraph) Out(i int) []int {
 	return g[i]
 }
+
+// Edge identifies an edge in a graph. Given Graph g, Edge e
+// represents edge g.Out(e.Node)[e.Edge].
+type Edge struct {
+	Node int // Node ID
+	Edge int // Edge index
+}
