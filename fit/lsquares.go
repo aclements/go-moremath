@@ -9,7 +9,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/gonum/matrix/mat64"
+	"gonum.org/v1/gonum/mat"
 )
 
 // LinearLeastSquares computes the least squares fit for the function
@@ -60,36 +60,36 @@ func LinearLeastSquares(xs, ys, weights []float64, terms ...func(xs, termOut []f
 	for i, term := range terms {
 		term(xs, xTVals[i*len(xs):i*len(xs)+len(xs)])
 	}
-	XT := mat64.NewDense(len(terms), len(xs), xTVals)
+	XT := mat.NewDense(len(terms), len(xs), xTVals)
 	X := XT.T()
 
 	// Construct 𝐗ᵀ𝐖.
-	var XTW *mat64.Dense
+	var XTW *mat.Dense
 	if weights == nil {
 		// 𝐖 is the identity matrix.
 		XTW = XT
 	} else {
 		// Since 𝐖 is a diagonal matrix, we do this directly.
-		XTW = mat64.DenseCopyOf(XT)
-		WDiag := mat64.NewVector(len(weights), weights)
+		XTW = mat.DenseCopyOf(XT)
+		WDiag := mat.NewVecDense(len(weights), weights)
 		for row := 0; row < len(terms); row++ {
-			rowView := XTW.RowView(row)
+			rowView := XTW.RowView(row).(*mat.VecDense)
 			rowView.MulElemVec(rowView, WDiag)
 		}
 	}
 
 	// Construct 𝐲.
-	y := mat64.NewVector(len(ys), ys)
+	y := mat.NewVecDense(len(ys), ys)
 
 	// Compute Β̂.
-	lhs := mat64.NewDense(len(terms), len(terms), nil)
+	lhs := mat.NewDense(len(terms), len(terms), nil)
 	lhs.Mul(XTW, X)
 
-	rhs := mat64.NewVector(len(terms), nil)
+	rhs := mat.NewVecDense(len(terms), nil)
 	rhs.MulVec(XTW, y)
 
 	BVals := make([]float64, len(terms))
-	B := mat64.NewVector(len(terms), BVals)
+	B := mat.NewVecDense(len(terms), BVals)
 	B.SolveVec(lhs, rhs)
 	return BVals
 }
