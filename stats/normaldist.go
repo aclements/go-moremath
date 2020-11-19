@@ -139,3 +139,11 @@ func (n NormalDist) Bounds() (float64, float64) {
 	const stddevs = 3
 	return n.Mu - stddevs*n.Sigma, n.Mu + stddevs*n.Sigma
 }
+
+func (n NormalDist) Mean() float64 {
+	return n.Mu
+}
+
+func (n NormalDist) Variance() float64 {
+	return n.Sigma * n.Sigma
+}
