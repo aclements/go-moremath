@@ -228,6 +228,8 @@ func (s Sample) StdDev() float64 {
 // the first and third quartiles, respectively. Quantile(P/100) is the
 // P'th percentile.
 //
+// See also function QuantileCI.
+//
 // This is constant time if s.Sorted and s.Weights == nil.
 func (s Sample) Quantile(q float64) float64 {
 	if len(s.Xs) == 0 {
