@@ -32,7 +32,7 @@ func TestQuantileCI(t *testing.T) {
 			s.Xs = append(s.Xs, float64(i))
 		}
 		s.Sorted = true
-		lo, hi := res.FromSample(s)
+		_, lo, hi := res.SampleCI(s)
 		if !eq(wlo, lo) || !eq(whi, hi) {
 			t.Errorf("want [%v,%v], got [%v,%v]", wlo, whi, lo, hi)
 		}

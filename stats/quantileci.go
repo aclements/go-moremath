@@ -40,14 +40,14 @@ type QuantileCIResult struct {
 	Ambiguous bool
 }
 
-// FromSample returns the confidence interval of q in terms of values
-// from a sample. It may return negative or positive infinity if the
-// interval lies outside the sample.
-func (q QuantileCIResult) FromSample(s Sample) (lo, hi float64) {
+// SampleCI returns the quantile and its confidence interval for a
+// sample given the parameters in ci. It may return negative or
+// positive infinity if the interval lies outside the sample.
+func (ci QuantileCIResult) SampleCI(s Sample) (q, lo, hi float64) {
 	if s.Weights != nil {
 		panic("Cannot compute quantile CI on a weighted sample")
 	}
-	if len(s.Xs) != q.N {
+	if len(s.Xs) != ci.N {
 		panic("Sample size differs from computed quantile CI")
 	}
 
@@ -55,16 +55,17 @@ func (q QuantileCIResult) FromSample(s Sample) (lo, hi float64) {
 		s = *s.Copy().Sort()
 	}
 
-	if q.LoOrder < 1 {
+	q = s.Quantile(ci.Quantile)
+	if ci.LoOrder < 1 {
 		// The sample is too small or the confidence is too high.
 		lo = math.Inf(-1)
 	} else {
-		lo = s.Xs[q.LoOrder-1]
+		lo = s.Xs[ci.LoOrder-1]
 	}
-	if q.HiOrder-1 >= len(s.Xs) {
+	if ci.HiOrder-1 >= len(s.Xs) {
 		hi = math.Inf(1)
 	} else {
-		hi = s.Xs[q.HiOrder-1]
+		hi = s.Xs[ci.HiOrder-1]
 	}
 	return
 }

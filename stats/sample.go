@@ -141,6 +141,41 @@ func (s Sample) Mean() float64 {
 	return m
 }
 
+// MeanCI returns the arithmetic mean of xs and its confidence
+// interval based on the sample standard deviation.
+func MeanCI(xs []float64, confidence float64) (mean, lo, hi float64) {
+	mean = Mean(xs)
+
+	var w float64
+	if confidence <= 0 {
+		// At confidence level 0, the CI width is 0.
+		w = 0
+	} else if confidence >= 1 || len(xs) <= 1 {
+		// With confidence level 1, we don't know anything.
+		// This is also the case if the sample is too small to
+		// have a CI.
+		w = math.Inf(1)
+	} else {
+		s := StdDev(xs)
+		tdist := TDist{V: float64(len(xs) - 1)}
+		alpha := (1 - confidence) / 2
+		t := -InvCDF(tdist)(alpha)
+		w = t * s / math.Sqrt(float64(len(xs)))
+	}
+
+	return mean, mean - w, mean + w
+}
+
+// MeanCI returns the arithmetic mean of the Sample and its confidence
+// interval based on the sample standard deviation.
+func (s Sample) MeanCI(confidence float64) (mean, lo, hi float64) {
+	if len(s.Xs) == 0 || s.Weights == nil {
+		return MeanCI(s.Xs, confidence)
+	}
+	// TODO(austin)
+	panic("Weighted MeanCI not implemented")
+}
+
 // GeoMean returns the geometric mean of xs. xs must be positive.
 func GeoMean(xs []float64) float64 {
 	if len(xs) == 0 {
