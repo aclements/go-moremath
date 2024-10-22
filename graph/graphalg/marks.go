@@ -52,7 +52,7 @@ func (m *NodeMarks) grow(i int) {
 //
 // This is typically used to loop over set marks like:
 //
-//   for i := m.Next(-1); i >= 0; i = m.Next(i) { ... }
+//	for i := m.Next(-1); i >= 0; i = m.Next(i) { ... }
 func (m NodeMarks) Next(i int) int {
 	i++
 	if i < 0 {

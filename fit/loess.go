@@ -25,7 +25,7 @@ import (
 // the regression at x, and that the effect of these points falls off
 // further from x.
 //
-// References
+// # References
 //
 // Cleveland, William S., and Susan J. Devlin. "Locally weighted
 // regression: an approach to regression analysis by local fitting."

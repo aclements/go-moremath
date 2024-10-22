@@ -14,16 +14,16 @@ import (
 
 // LinearLeastSquares computes the least squares fit for the function
 //
-//   f(x) = Β₀terms₀(x) + Β₁terms₁(x) + ...
+//	f(x) = Β₀terms₀(x) + Β₁terms₁(x) + ...
 //
 // to the data (xs[i], ys[i]). It returns the parameters Β₀, Β₁, ...
 // that minimize the sum of the squares of the residuals of f:
 //
-//   ∑ (ys[i] - f(xs[i]))²
+//	∑ (ys[i] - f(xs[i]))²
 //
 // If weights is non-nil, it is used to weight these residuals:
 //
-//   ∑ weights[i] × (ys[i] - f(xs[i]))²
+//	∑ weights[i] × (ys[i] - f(xs[i]))²
 //
 // The function f is specified by one Go function for each linear
 // term. For efficiency, the Go function is vectorized: it will be

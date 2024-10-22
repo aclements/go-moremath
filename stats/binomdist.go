@@ -70,8 +70,8 @@ func (d BinomialDist) Variance() float64 {
 // binomial distribution and n is the normal approximation, operations
 // map as follows:
 //
-//   b.PMF(k) => n.CDF(k+0.5) - n.CDF(k-0.5)
-//   b.CDF(k) => n.CDF(k+0.5)
+//	b.PMF(k) => n.CDF(k+0.5) - n.CDF(k-0.5)
+//	b.CDF(k) => n.CDF(k+0.5)
 func (d BinomialDist) NormalApprox() NormalDist {
 	return NormalDist{Mu: d.Mean(), Sigma: math.Sqrt(d.Variance())}
 }

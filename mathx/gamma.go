@@ -9,7 +9,7 @@ import "math"
 // GammaInc returns the value of the incomplete gamma function (also
 // known as the regularized gamma function):
 //
-//   P(a, x) = 1 / Γ(a) * ∫₀ˣ exp(-t) t**(a-1) dt
+//	P(a, x) = 1 / Γ(a) * ∫₀ˣ exp(-t) t**(a-1) dt
 func GammaInc(a, x float64) float64 {
 	// Based on Numerical Recipes in C, section 6.2.
 
